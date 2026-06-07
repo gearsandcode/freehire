@@ -1,0 +1,15 @@
+# Binaries
+/bin/
+/out/
+hire
+
+# Environment
+.env
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Claude Code local settings
+.claude/
