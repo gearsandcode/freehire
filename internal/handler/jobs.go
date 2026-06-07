@@ -1,7 +1,8 @@
-package handlers
+package handler
 
 import (
 	"errors"
+	"math"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -18,9 +19,11 @@ const (
 // ListJobs returns a page of jobs using limit/offset pagination.
 func (h *Handler) ListJobs(c *fiber.Ctx) error {
 	limit := min(max(c.QueryInt("limit", defaultLimit), 1), maxLimit)
-	offset := max(c.QueryInt("offset", 0), 0)
+	// Clamp offset into int32 range: the column binds as Postgres int4, and an
+	// unbounded query value would otherwise overflow on the int32 conversion.
+	offset := min(max(c.QueryInt("offset", 0), 0), math.MaxInt32)
 
-	jobs, err := h.q.ListJobs(c.Context(), db.ListJobsParams{
+	jobs, err := h.queries.ListJobs(c.Context(), db.ListJobsParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
 	})
@@ -28,7 +31,7 @@ func (h *Handler) ListJobs(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to list jobs")
 	}
 
-	total, err := h.q.CountJobs(c.Context())
+	total, err := h.queries.CountJobs(c.Context())
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to count jobs")
 	}
@@ -50,7 +53,7 @@ func (h *Handler) GetJob(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid job id")
 	}
 
-	job, err := h.q.GetJob(c.Context(), id)
+	job, err := h.queries.GetJob(c.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return fiber.NewError(fiber.StatusNotFound, "job not found")
 	}

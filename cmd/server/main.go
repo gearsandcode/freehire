@@ -14,7 +14,7 @@ import (
 
 	"github.com/strelov1/hire/internal/config"
 	"github.com/strelov1/hire/internal/database"
-	"github.com/strelov1/hire/internal/handlers"
+	"github.com/strelov1/hire/internal/handler"
 )
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 
-	handlers.Register(app, pool)
+	handler.Register(app, pool)
 
 	// Run the server in a goroutine so main can wait for a shutdown signal.
 	// Fiber's Listen returns nil on graceful shutdown, so any error is fatal.

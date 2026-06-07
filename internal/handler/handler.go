@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"github.com/gofiber/fiber/v2"
@@ -7,19 +7,19 @@ import (
 	"github.com/strelov1/hire/internal/db"
 )
 
+// Handler holds dependencies shared across HTTP handlers.
+type Handler struct {
+	pool    *pgxpool.Pool
+	queries *db.Queries
+}
+
 // Register wires all routes onto the application.
 func Register(app *fiber.App, pool *pgxpool.Pool) {
-	h := &Handler{pool: pool, q: db.New(pool)}
+	h := &Handler{pool: pool, queries: db.New(pool)}
 
 	app.Get("/health", h.Health)
 
 	api := app.Group("/api/v1")
 	api.Get("/jobs", h.ListJobs)
 	api.Get("/jobs/:id", h.GetJob)
-}
-
-// Handler holds dependencies shared across HTTP handlers.
-type Handler struct {
-	pool *pgxpool.Pool
-	q    *db.Queries
 }
