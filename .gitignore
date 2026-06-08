@@ -13,3 +13,6 @@ hire
 
 # Claude Code local settings
 .claude/
+.agents/
+skills-lock.json
+docs/superpowers/

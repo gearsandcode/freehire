@@ -1,0 +1,31 @@
+<script lang="ts">
+  import { Skeleton } from '$lib/ui';
+
+  // Shared rendering for the three async states every data view goes through.
+  // `loading` shows placeholder rows; `empty`/`error` show a centered message.
+  let {
+    state,
+    message,
+    rows = 5,
+  }: {
+    state: 'loading' | 'empty' | 'error';
+    message?: string;
+    rows?: number;
+  } = $props();
+
+  const fallback = $derived(
+    message ?? (state === 'error' ? 'Something went wrong.' : 'Nothing here yet.'),
+  );
+</script>
+
+{#if state === 'loading'}
+  <div class="flex flex-col gap-3">
+    {#each Array(rows) as _, i (i)}
+      <Skeleton class="h-16 w-full" />
+    {/each}
+  </div>
+{:else}
+  <p class="py-12 text-center text-sm {state === 'error' ? 'text-destructive' : 'text-muted-foreground'}">
+    {fallback}
+  </p>
+{/if}

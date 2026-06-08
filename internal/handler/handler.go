@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/strelov1/hire/internal/db"
@@ -29,9 +30,13 @@ func pageParams(c *fiber.Ctx) (limit, offset int) {
 	return limit, offset
 }
 
-// Register wires all routes onto the application.
-func Register(app *fiber.App, pool *pgxpool.Pool) {
+// Register wires all routes onto the application. frontendOrigin is the single
+// browser origin allowed to call the API cross-origin (the read endpoints are
+// GET-only, so the default GET/OPTIONS methods suffice).
+func Register(app *fiber.App, pool *pgxpool.Pool, frontendOrigin string) {
 	h := &Handler{pool: pool, queries: db.New(pool)}
+
+	app.Use(cors.New(cors.Config{AllowOrigins: frontendOrigin}))
 
 	app.Get("/health", h.Health)
 

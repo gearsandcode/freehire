@@ -4,15 +4,17 @@ import "os"
 
 // Settings holds application configuration read from environment variables.
 type Settings struct {
-	Port        string
-	DatabaseURL string
+	Port           string
+	DatabaseURL    string
+	FrontendOrigin string
 }
 
 // Load reads configuration from the environment, falling back to sensible defaults.
 func Load() Settings {
 	return Settings{
-		Port:        env("PORT", "8080"),
-		DatabaseURL: env("DATABASE_URL", "postgres://hire:hire@localhost:5432/hire?sslmode=disable"),
+		Port:           env("PORT", "8080"),
+		DatabaseURL:    env("DATABASE_URL", "postgres://hire:hire@localhost:5432/hire?sslmode=disable"),
+		FrontendOrigin: env("FRONTEND_ORIGIN", "http://localhost:5173"),
 	}
 }
 

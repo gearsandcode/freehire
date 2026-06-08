@@ -35,7 +35,7 @@ func main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 
-	handler.Register(app, pool)
+	handler.Register(app, pool, cfg.FrontendOrigin)
 
 	// Run the server in a goroutine so main can wait for a shutdown signal.
 	// Fiber's Listen returns nil on graceful shutdown, so any error is fatal.
