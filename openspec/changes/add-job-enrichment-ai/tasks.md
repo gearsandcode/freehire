@@ -39,4 +39,4 @@
 ## 7. Verification
 
 - [x] 7.1 `go build ./... && go vet ./...` pass; full unit suite green; integration suite green via `-tags=integration`
-- [ ] 7.2 (MANUAL — requires a live LLM endpoint, run by the operator) With `LLM_BASE_URL`/`LLM_API_KEY`/`LLM_MODEL` set to a real OpenAI-compatible endpoint and a seeded local DB (`down -v && make up`): run `cmd/enrich`; confirm a pending job is enqueued, enriched with a valid payload, `enriched_at` set, `enrichment_version = 1`, raw fields unchanged, its outbox entry deleted, and a second run is a no-op for it
+- [x] 7.2 Verified end-to-end against a live OpenAI-compatible endpoint with a seeded local DB: run 1 enriched the job (valid vocabulary payload, `enriched_at` set, `enrichment_version = 1`, raw fields unchanged, outbox entry deleted); run 2 was a no-op (`enriched=0`, version still 1)
