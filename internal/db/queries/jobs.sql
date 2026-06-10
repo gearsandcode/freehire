@@ -61,3 +61,14 @@ ON CONFLICT (source, external_id) DO UPDATE SET
     enrichment_version = EXCLUDED.enrichment_version,
     updated_at   = now()
 RETURNING *;
+
+-- name: SetJobEnrichment :exec
+-- Targeted enrichment write used by the enrichment command: set only the payload
+-- and the provenance stamp, touching no raw source field. Kept separate from
+-- UpsertJob (the ingest full-upsert path) so ingest and enrichment stay decoupled.
+UPDATE jobs
+SET enrichment         = sqlc.arg(enrichment),
+    enriched_at        = sqlc.arg(enriched_at),
+    enrichment_version = sqlc.arg(enrichment_version),
+    updated_at         = now()
+WHERE id = sqlc.arg(id);

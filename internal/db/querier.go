@@ -9,8 +9,17 @@ import (
 )
 
 type Querier interface {
+	// Claim a batch of live, unleased entries by stamping claimed_at. SKIP LOCKED lets
+	// concurrent workers take disjoint rows; the lease predicate reclaims entries whose
+	// worker died (stale claimed_at), so no separate reaper process is needed.
+	ClaimEnrichmentBatch(ctx context.Context, arg ClaimEnrichmentBatchParams) ([]ClaimEnrichmentBatchRow, error)
 	CountCompanies(ctx context.Context) (int64, error)
 	CountJobs(ctx context.Context) (int64, error)
+	DeleteEnrichmentEntry(ctx context.Context, id int64) error
+	// Idempotent backfill: enqueue every job that is unenriched or below the target
+	// schema version. ON CONFLICT keeps exactly one entry per (job_id, target_version),
+	// so running this every command invocation never duplicates work.
+	EnqueuePendingJobs(ctx context.Context, targetVersion int32) (int64, error)
 	GetCompany(ctx context.Context, slug string) (Company, error)
 	GetJob(ctx context.Context, id int64) (Job, error)
 	// Catalog page: companies with their job counts. The job count is computed on
@@ -19,6 +28,15 @@ type Querier interface {
 	ListCompanies(ctx context.Context, arg ListCompaniesParams) ([]ListCompaniesRow, error)
 	ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, error)
 	ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyParams) ([]Job, error)
+	// Count a failed attempt: bump attempts, record the error, and dead-letter (set
+	// failed_at) once attempts reach the max. The lease (claimed_at) is intentionally
+	// left in place — its expiry gates the retry to a later run and doubles as the
+	// crash reaper, so a failed entry is never reprocessed within the same run.
+	RecordEnrichmentFailure(ctx context.Context, arg RecordEnrichmentFailureParams) (RecordEnrichmentFailureRow, error)
+	// Targeted enrichment write used by the enrichment command: set only the payload
+	// and the provenance stamp, touching no raw source field. Kept separate from
+	// UpsertJob (the ingest full-upsert path) so ingest and enrichment stay decoupled.
+	SetJobEnrichment(ctx context.Context, arg SetJobEnrichmentParams) error
 	// Single atomic write: upsert the company (only when the slug is non-empty,
 	// via the WHERE on the SELECT) and the job together, keeping the "one write =
 	// one job" property of the pipeline's write path.

@@ -154,6 +154,35 @@ func (q *Queries) ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyPa
 	return items, nil
 }
 
+const setJobEnrichment = `-- name: SetJobEnrichment :exec
+UPDATE jobs
+SET enrichment         = $1,
+    enriched_at        = $2,
+    enrichment_version = $3,
+    updated_at         = now()
+WHERE id = $4
+`
+
+type SetJobEnrichmentParams struct {
+	Enrichment        json.RawMessage    `json:"enrichment"`
+	EnrichedAt        pgtype.Timestamptz `json:"enriched_at"`
+	EnrichmentVersion int32              `json:"enrichment_version"`
+	ID                int64              `json:"id"`
+}
+
+// Targeted enrichment write used by the enrichment command: set only the payload
+// and the provenance stamp, touching no raw source field. Kept separate from
+// UpsertJob (the ingest full-upsert path) so ingest and enrichment stay decoupled.
+func (q *Queries) SetJobEnrichment(ctx context.Context, arg SetJobEnrichmentParams) error {
+	_, err := q.db.Exec(ctx, setJobEnrichment,
+		arg.Enrichment,
+		arg.EnrichedAt,
+		arg.EnrichmentVersion,
+		arg.ID,
+	)
+	return err
+}
+
 const upsertJob = `-- name: UpsertJob :one
 WITH company_upsert AS (
     INSERT INTO companies (slug, name)

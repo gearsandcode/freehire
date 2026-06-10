@@ -17,6 +17,17 @@ type Company struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type EnrichmentOutbox struct {
+	ID            int64              `json:"id"`
+	JobID         int64              `json:"job_id"`
+	TargetVersion int32              `json:"target_version"`
+	Attempts      int32              `json:"attempts"`
+	ClaimedAt     pgtype.Timestamptz `json:"claimed_at"`
+	FailedAt      pgtype.Timestamptz `json:"failed_at"`
+	LastError     string             `json:"last_error"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type Job struct {
 	ID                int64              `json:"id"`
 	Source            string             `json:"source"`

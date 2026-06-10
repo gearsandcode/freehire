@@ -1,0 +1,97 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/strelov1/hire/internal/db"
+	"github.com/strelov1/hire/internal/enrich"
+)
+
+// dbStore adapts the generated queries + connection pool to enrich.Store. It is the
+// only place the runner's domain operations meet the DB layer; the success path
+// (SetJobEnrichment + DeleteEnrichmentEntry) runs in one transaction here.
+type dbStore struct {
+	pool *pgxpool.Pool
+	q    *db.Queries
+}
+
+func newDBStore(pool *pgxpool.Pool) *dbStore {
+	return &dbStore{pool: pool, q: db.New(pool)}
+}
+
+func (s *dbStore) Enqueue(ctx context.Context, targetVersion int) (int64, error) {
+	return s.q.EnqueuePendingJobs(ctx, int32(targetVersion))
+}
+
+func (s *dbStore) Claim(ctx context.Context, batch, leaseSeconds int) ([]enrich.Claimed, error) {
+	rows, err := s.q.ClaimEnrichmentBatch(ctx, db.ClaimEnrichmentBatchParams{
+		LeaseSeconds: int32(leaseSeconds),
+		BatchSize:    int32(batch),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]enrich.Claimed, len(rows))
+	for i, r := range rows {
+		out[i] = enrich.Claimed{
+			OutboxID:      r.ID,
+			JobID:         r.JobID,
+			TargetVersion: int(r.TargetVersion),
+			Attempts:      int(r.Attempts),
+		}
+	}
+	return out, nil
+}
+
+func (s *dbStore) Job(ctx context.Context, id int64) (enrich.JobInput, error) {
+	j, err := s.q.GetJob(ctx, id)
+	if err != nil {
+		return enrich.JobInput{}, err
+	}
+	return enrich.JobInput{
+		Title:       j.Title,
+		Company:     j.Company,
+		Location:    j.Location,
+		Remote:      j.Remote,
+		Description: j.Description,
+	}, nil
+}
+
+func (s *dbStore) Complete(ctx context.Context, outboxID, jobID int64, payload json.RawMessage, version int) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.q.WithTx(tx)
+	if err := qtx.SetJobEnrichment(ctx, db.SetJobEnrichmentParams{
+		Enrichment:        payload,
+		EnrichedAt:        pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		EnrichmentVersion: int32(version),
+		ID:                jobID,
+	}); err != nil {
+		return err
+	}
+	if err := qtx.DeleteEnrichmentEntry(ctx, outboxID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *dbStore) Fail(ctx context.Context, outboxID int64, errMsg string, maxAttempts int) (bool, error) {
+	row, err := s.q.RecordEnrichmentFailure(ctx, db.RecordEnrichmentFailureParams{
+		LastError:   errMsg,
+		MaxAttempts: int32(maxAttempts),
+		ID:          outboxID,
+	})
+	if err != nil {
+		return false, err
+	}
+	return row.FailedAt.Valid, nil
+}
