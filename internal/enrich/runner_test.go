@@ -49,8 +49,8 @@ func (s *fakeStore) Job(_ context.Context, id int64) (JobInput, error) {
 	return s.jobs[id], s.jobErr[id]
 }
 
-func (s *fakeStore) Complete(_ context.Context, outboxID, _ int64, _ json.RawMessage, _ int) error {
-	s.completed = append(s.completed, outboxID)
+func (s *fakeStore) Complete(_ context.Context, entry Claimed, _ json.RawMessage) error {
+	s.completed = append(s.completed, entry.OutboxID)
 	return nil
 }
 

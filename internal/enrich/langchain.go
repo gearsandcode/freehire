@@ -28,7 +28,7 @@ func NewLangChainProvider(baseURL, apiKey, model string) (*LangChainProvider, er
 		openai.WithModel(model),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("enrich: build LLM client: %w", err)
+		return nil, fmt.Errorf("enrich: build llm client: %w", err)
 	}
 	return &LangChainProvider{llm: llm}, nil
 }

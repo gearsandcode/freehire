@@ -50,10 +50,10 @@ func LoadEnrich() (Enrich, error) {
 }
 
 func envInt(key string, fallback int) int {
-	if v, ok := os.LookupEnv(key); ok && v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			return n
-		}
+	// Reuse env() for the "unset or empty -> fallback" rule; an unparseable value
+	// also falls back.
+	if n, err := strconv.Atoi(env(key, "")); err == nil {
+		return n
 	}
 	return fallback
 }

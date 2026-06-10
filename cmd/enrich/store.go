@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -62,7 +63,7 @@ func (s *dbStore) Job(ctx context.Context, id int64) (enrich.JobInput, error) {
 	}, nil
 }
 
-func (s *dbStore) Complete(ctx context.Context, outboxID, jobID int64, payload json.RawMessage, version int) error {
+func (s *dbStore) Complete(ctx context.Context, entry enrich.Claimed, payload json.RawMessage) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -73,13 +74,13 @@ func (s *dbStore) Complete(ctx context.Context, outboxID, jobID int64, payload j
 	if err := qtx.SetJobEnrichment(ctx, db.SetJobEnrichmentParams{
 		Enrichment:        payload,
 		EnrichedAt:        pgtype.Timestamptz{Time: time.Now(), Valid: true},
-		EnrichmentVersion: int32(version),
-		ID:                jobID,
+		EnrichmentVersion: int32(entry.TargetVersion),
+		ID:                entry.JobID,
 	}); err != nil {
-		return err
+		return fmt.Errorf("set enrichment: %w", err)
 	}
-	if err := qtx.DeleteEnrichmentEntry(ctx, outboxID); err != nil {
-		return err
+	if err := qtx.DeleteEnrichmentEntry(ctx, entry.OutboxID); err != nil {
+		return fmt.Errorf("delete outbox entry: %w", err)
 	}
 	return tx.Commit(ctx)
 }
