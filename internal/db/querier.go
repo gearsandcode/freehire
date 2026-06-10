@@ -22,6 +22,9 @@ type Querier interface {
 	// Single atomic write: upsert the company (only when the slug is non-empty,
 	// via the WHERE on the SELECT) and the job together, keeping the "one write =
 	// one job" property of the pipeline's write path.
+	// NOTE: enrichment must be a non-nil json.RawMessage (pass []byte("{}") for an
+	// un-enriched job, never nil) — the column is NOT NULL and the '{}' default does
+	// not apply to an explicit NULL on INSERT.
 	UpsertJob(ctx context.Context, arg UpsertJobParams) (Job, error)
 }
 

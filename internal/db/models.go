@@ -5,6 +5,8 @@
 package db
 
 import (
+	"encoding/json"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -16,17 +18,20 @@ type Company struct {
 }
 
 type Job struct {
-	ID          int64              `json:"id"`
-	Source      string             `json:"source"`
-	ExternalID  string             `json:"external_id"`
-	URL         string             `json:"url"`
-	Title       string             `json:"title"`
-	Company     string             `json:"company"`
-	Location    string             `json:"location"`
-	Remote      bool               `json:"remote"`
-	Description string             `json:"description"`
-	PostedAt    pgtype.Timestamptz `json:"posted_at"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	CompanySlug string             `json:"company_slug"`
+	ID                int64              `json:"id"`
+	Source            string             `json:"source"`
+	ExternalID        string             `json:"external_id"`
+	URL               string             `json:"url"`
+	Title             string             `json:"title"`
+	Company           string             `json:"company"`
+	Location          string             `json:"location"`
+	Remote            bool               `json:"remote"`
+	Description       string             `json:"description"`
+	PostedAt          pgtype.Timestamptz `json:"posted_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	CompanySlug       string             `json:"company_slug"`
+	Enrichment        json.RawMessage    `json:"enrichment"`
+	EnrichedAt        pgtype.Timestamptz `json:"enriched_at"`
+	EnrichmentVersion int32              `json:"enrichment_version"`
 }

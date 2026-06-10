@@ -1,0 +1,127 @@
+// Package enrich defines the structured, AI-derived field model for a job:
+// the typed contract for the jobs.enrichment JSONB payload and the controlled
+// vocabularies that pin down every enum field's allowed values.
+//
+// This package is the schema's source of truth. It contains no AI calls — only
+// the contract. A later enrichment layer marshals an Enrichment into the JSONB
+// column; a later search layer facets on these exact values. Keeping the
+// vocabularies here as one definition prevents value fragmentation (e.g.
+// "senior" vs "Senior" vs "sr") across those phases.
+//
+// Field optionality: every field is optional and omitted when the source does
+// not state it. Fields whose zero value can be a real value (ints, bool) are
+// pointers so an absent field is distinguishable from a present zero; fields
+// whose zero value (empty string / empty slice) can never be a valid value use
+// omitempty directly.
+package enrich
+
+import (
+	"fmt"
+	"slices"
+)
+
+// Enrichment is the typed view of a job's enrichment JSONB payload. JSON keys
+// are snake_case to match the existing jobs JSON tags. The blob maps 1:1 to the
+// future search document.
+type Enrichment struct {
+	// Work arrangement.
+	WorkMode        string `json:"work_mode,omitempty"`        // enum: WorkModeValues
+	EmploymentType  string `json:"employment_type,omitempty"`  // enum: EmploymentTypeValues
+	Relocation      string `json:"relocation,omitempty"`       // enum: RelocationValues
+	VisaSponsorship *bool  `json:"visa_sponsorship,omitempty"` // pointer: false is meaningful
+
+	// Location / eligibility.
+	Countries    []string `json:"countries,omitempty"`     // enum[]: ISO 3166-1 alpha-2
+	Cities       []string `json:"cities,omitempty"`        // free text (not faceted)
+	TimezoneNote string   `json:"timezone_note,omitempty"` // free text (not faceted)
+
+	// Compensation.
+	SalaryMin      *int   `json:"salary_min,omitempty"`      // in salary_currency units
+	SalaryMax      *int   `json:"salary_max,omitempty"`      // in salary_currency units
+	SalaryCurrency string `json:"salary_currency,omitempty"` // ISO 4217 (e.g. USD, EUR)
+	SalaryPeriod   string `json:"salary_period,omitempty"`   // enum: SalaryPeriodValues
+
+	// Requirements / qualifications.
+	Seniority          string   `json:"seniority,omitempty"`            // enum: SeniorityValues
+	ExperienceYearsMin *int     `json:"experience_years_min,omitempty"` // non-negative
+	EnglishLevel       string   `json:"english_level,omitempty"`        // enum: EnglishLevelValues
+	EducationLevel     string   `json:"education_level,omitempty"`      // enum: EducationLevelValues
+	Skills             []string `json:"skills,omitempty"`               // normalized lowercase tokens
+
+	// Classification.
+	Category        string   `json:"category,omitempty"`         // enum: CategoryValues
+	Domains         []string `json:"domains,omitempty"`          // enum[]: DomainValues
+	PostingLanguage string   `json:"posting_language,omitempty"` // ISO 639-1 (e.g. en, uk, ru)
+
+	// Company descriptors (job-time observation; seam to the companies entity).
+	CompanyType string `json:"company_type,omitempty"` // enum: CompanyTypeValues
+	CompanySize string `json:"company_size,omitempty"` // enum: CompanySizeValues
+}
+
+// Controlled vocabularies. Each is the ordered, canonical list of allowed
+// values for one enum field. They are exported so a later enrichment prompt and
+// a later facet config reference the same lists. ISO-standard fields
+// (countries, salary_currency, posting_language) and the open skills field have
+// no bundled closed vocabulary here and are not enum-validated in this phase.
+var (
+	WorkModeValues       = []string{"remote", "hybrid", "onsite"}
+	EmploymentTypeValues = []string{"full_time", "part_time", "contract", "internship"}
+	RelocationValues     = []string{"not_supported", "supported", "required"}
+	SalaryPeriodValues   = []string{"year", "month", "day", "hour"}
+	SeniorityValues      = []string{"intern", "junior", "middle", "senior", "lead", "principal", "c_level"}
+	EnglishLevelValues   = []string{"none", "a1", "a2", "b1", "b2", "c1", "c2", "native"}
+	EducationLevelValues = []string{"none", "bachelor", "master", "phd"}
+	CategoryValues       = []string{
+		"backend", "frontend", "fullstack", "mobile", "devops",
+		"data_engineering", "data_science", "ml_ai", "qa", "security",
+		"design", "product", "project_management", "management",
+		"marketing", "sales", "support", "other",
+	}
+	DomainValues = []string{
+		"fintech", "gambling", "ecommerce", "crypto", "healthcare",
+		"saas", "gamedev", "edtech", "adtech", "govtech",
+		"media", "travel", "logistics", "other",
+	}
+	CompanyTypeValues = []string{"product", "startup", "outsource", "outstaff", "agency", "inhouse", "government"}
+	CompanySizeValues = []string{"1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"}
+)
+
+// Validate checks every enum field against its controlled vocabulary and
+// returns an error identifying the first offending field. Empty (absent) fields
+// pass — every field is optional. Non-enum fields (ISO codes, free text,
+// numbers, skills) are unconstrained here. Multi-value enum fields are checked
+// element by element.
+func (e Enrichment) Validate() error {
+	// Single-value enum fields, in declaration order.
+	scalars := []struct {
+		field string
+		value string
+		vocab []string
+	}{
+		{"work_mode", e.WorkMode, WorkModeValues},
+		{"employment_type", e.EmploymentType, EmploymentTypeValues},
+		{"relocation", e.Relocation, RelocationValues},
+		{"salary_period", e.SalaryPeriod, SalaryPeriodValues},
+		{"seniority", e.Seniority, SeniorityValues},
+		{"english_level", e.EnglishLevel, EnglishLevelValues},
+		{"education_level", e.EducationLevel, EducationLevelValues},
+		{"category", e.Category, CategoryValues},
+		{"company_type", e.CompanyType, CompanyTypeValues},
+		{"company_size", e.CompanySize, CompanySizeValues},
+	}
+	for _, s := range scalars {
+		if s.value != "" && !slices.Contains(s.vocab, s.value) {
+			return fmt.Errorf("enrich: invalid %s %q", s.field, s.value)
+		}
+	}
+
+	// Multi-value enum fields. Inline while domains is the only one; promote to
+	// a table (like scalars above) if a second multi-value enum appears.
+	for _, v := range e.Domains {
+		if !slices.Contains(DomainValues, v) {
+			return fmt.Errorf("enrich: invalid domains %q", v)
+		}
+	}
+
+	return nil
+}

@@ -14,3 +14,9 @@ sql:
         rename:
           # Go initialism: column "url" -> field URL (not Url). JSON tag stays "url".
           url: "URL"
+        overrides:
+          # Read jobs.enrichment as json.RawMessage, not []byte. RawMessage keeps
+          # the JSONB blob as raw bytes that marshal straight through to the API
+          # response (an empty payload stays {}); a plain []byte would base64-encode.
+          - column: "jobs.enrichment"
+            go_type: "encoding/json.RawMessage"

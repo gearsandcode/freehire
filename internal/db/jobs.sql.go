@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -24,7 +25,7 @@ func (q *Queries) CountJobs(ctx context.Context) (int64, error) {
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version
 FROM jobs
 WHERE id = $1
 `
@@ -46,12 +47,15 @@ func (q *Queries) GetJob(ctx context.Context, id int64) (Job, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompanySlug,
+		&i.Enrichment,
+		&i.EnrichedAt,
+		&i.EnrichmentVersion,
 	)
 	return i, err
 }
 
 const listJobs = `-- name: ListJobs :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version
 FROM jobs
 ORDER BY posted_at DESC NULLS LAST, id DESC
 LIMIT $1 OFFSET $2
@@ -85,6 +89,9 @@ func (q *Queries) ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, erro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CompanySlug,
+			&i.Enrichment,
+			&i.EnrichedAt,
+			&i.EnrichmentVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -97,7 +104,7 @@ func (q *Queries) ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, erro
 }
 
 const listJobsByCompany = `-- name: ListJobsByCompany :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version
 FROM jobs
 WHERE company_slug = $1
 ORDER BY posted_at DESC NULLS LAST, id DESC
@@ -133,6 +140,9 @@ func (q *Queries) ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyPa
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CompanySlug,
+			&i.Enrichment,
+			&i.EnrichedAt,
+			&i.EnrichmentVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -154,11 +164,13 @@ WITH company_upsert AS (
         updated_at = now()
 )
 INSERT INTO jobs (
-    source, external_id, url, title, company, company_slug, location, remote, description, posted_at
+    source, external_id, url, title, company, company_slug, location, remote, description, posted_at,
+    enrichment, enriched_at, enrichment_version
 ) VALUES (
     $1, $2, $3, $4,
     $5, $6, $7, $8,
-    $9, $10
+    $9, $10,
+    $11, $12, $13
 )
 ON CONFLICT (source, external_id) DO UPDATE SET
     url          = EXCLUDED.url,
@@ -169,26 +181,38 @@ ON CONFLICT (source, external_id) DO UPDATE SET
     remote       = EXCLUDED.remote,
     description  = EXCLUDED.description,
     posted_at    = EXCLUDED.posted_at,
+    -- Full-replace, consistent with the raw fields above. Seam for phase 2: when
+    -- the ingest path (which carries no enrichment) and the enrichment path are
+    -- separated, decide whether a source re-ingest preserves existing enrichment.
+    enrichment         = EXCLUDED.enrichment,
+    enriched_at        = EXCLUDED.enriched_at,
+    enrichment_version = EXCLUDED.enrichment_version,
     updated_at   = now()
-RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug
+RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version
 `
 
 type UpsertJobParams struct {
-	Source      string             `json:"source"`
-	ExternalID  string             `json:"external_id"`
-	URL         string             `json:"url"`
-	Title       string             `json:"title"`
-	Company     string             `json:"company"`
-	CompanySlug string             `json:"company_slug"`
-	Location    string             `json:"location"`
-	Remote      bool               `json:"remote"`
-	Description string             `json:"description"`
-	PostedAt    pgtype.Timestamptz `json:"posted_at"`
+	Source            string             `json:"source"`
+	ExternalID        string             `json:"external_id"`
+	URL               string             `json:"url"`
+	Title             string             `json:"title"`
+	Company           string             `json:"company"`
+	CompanySlug       string             `json:"company_slug"`
+	Location          string             `json:"location"`
+	Remote            bool               `json:"remote"`
+	Description       string             `json:"description"`
+	PostedAt          pgtype.Timestamptz `json:"posted_at"`
+	Enrichment        json.RawMessage    `json:"enrichment"`
+	EnrichedAt        pgtype.Timestamptz `json:"enriched_at"`
+	EnrichmentVersion int32              `json:"enrichment_version"`
 }
 
 // Single atomic write: upsert the company (only when the slug is non-empty,
 // via the WHERE on the SELECT) and the job together, keeping the "one write =
 // one job" property of the pipeline's write path.
+// NOTE: enrichment must be a non-nil json.RawMessage (pass []byte("{}") for an
+// un-enriched job, never nil) — the column is NOT NULL and the '{}' default does
+// not apply to an explicit NULL on INSERT.
 func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) (Job, error) {
 	row := q.db.QueryRow(ctx, upsertJob,
 		arg.Source,
@@ -201,6 +225,9 @@ func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) (Job, erro
 		arg.Remote,
 		arg.Description,
 		arg.PostedAt,
+		arg.Enrichment,
+		arg.EnrichedAt,
+		arg.EnrichmentVersion,
 	)
 	var i Job
 	err := row.Scan(
@@ -217,6 +244,9 @@ func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) (Job, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompanySlug,
+		&i.Enrichment,
+		&i.EnrichedAt,
+		&i.EnrichmentVersion,
 	)
 	return i, err
 }

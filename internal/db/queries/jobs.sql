@@ -24,6 +24,9 @@ LIMIT $2 OFFSET $3;
 -- Single atomic write: upsert the company (only when the slug is non-empty,
 -- via the WHERE on the SELECT) and the job together, keeping the "one write =
 -- one job" property of the pipeline's write path.
+-- NOTE: enrichment must be a non-nil json.RawMessage (pass []byte("{}") for an
+-- un-enriched job, never nil) — the column is NOT NULL and the '{}' default does
+-- not apply to an explicit NULL on INSERT.
 WITH company_upsert AS (
     INSERT INTO companies (slug, name)
     SELECT sqlc.arg(company_slug), sqlc.arg(company)
@@ -33,11 +36,13 @@ WITH company_upsert AS (
         updated_at = now()
 )
 INSERT INTO jobs (
-    source, external_id, url, title, company, company_slug, location, remote, description, posted_at
+    source, external_id, url, title, company, company_slug, location, remote, description, posted_at,
+    enrichment, enriched_at, enrichment_version
 ) VALUES (
     sqlc.arg(source), sqlc.arg(external_id), sqlc.arg(url), sqlc.arg(title),
     sqlc.arg(company), sqlc.arg(company_slug), sqlc.arg(location), sqlc.arg(remote),
-    sqlc.arg(description), sqlc.arg(posted_at)
+    sqlc.arg(description), sqlc.arg(posted_at),
+    sqlc.arg(enrichment), sqlc.arg(enriched_at), sqlc.arg(enrichment_version)
 )
 ON CONFLICT (source, external_id) DO UPDATE SET
     url          = EXCLUDED.url,
@@ -48,5 +53,11 @@ ON CONFLICT (source, external_id) DO UPDATE SET
     remote       = EXCLUDED.remote,
     description  = EXCLUDED.description,
     posted_at    = EXCLUDED.posted_at,
+    -- Full-replace, consistent with the raw fields above. Seam for phase 2: when
+    -- the ingest path (which carries no enrichment) and the enrichment path are
+    -- separated, decide whether a source re-ingest preserves existing enrichment.
+    enrichment         = EXCLUDED.enrichment,
+    enriched_at        = EXCLUDED.enriched_at,
+    enrichment_version = EXCLUDED.enrichment_version,
     updated_at   = now()
 RETURNING *;
