@@ -65,6 +65,10 @@ index's filterable attributes, an optional sort, an optional semantic ratio, and
 `limit`/`offset`. The existing `GET /api/v1/jobs` list endpoint SHALL be
 unchanged.
 
+Each result SHALL identify its job by `public_slug` and SHALL NOT include the
+internal numeric `id`, consistent with the public-identity contract used by the
+other public job reads.
+
 #### Scenario: Keyword query returns matches
 
 - **WHEN** a client requests `GET /api/v1/jobs/search?q=golang`
@@ -87,6 +91,12 @@ unchanged.
 - **WHEN** a client requests `GET /api/v1/jobs/search?q=go&limit=10&offset=20`
 - **THEN** at most 10 documents are returned and `meta` reports the applied
   `limit` 10 and `offset` 20 alongside the estimated total
+
+#### Scenario: Results identify jobs by public slug, not internal id
+
+- **WHEN** a job is returned by `GET /api/v1/jobs/search`
+- **THEN** the result carries the job's `public_slug` and omits the internal
+  numeric `id`
 
 ### Requirement: Batch reindex keeps the index in sync
 

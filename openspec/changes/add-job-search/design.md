@@ -55,17 +55,29 @@ hides the LLM `Provider`. *Alternative — hand-rolled HTTP client (telagon):*
 rejected per the project principle "prefer a library's intended API over a clever
 shim"; the SDK gives typed settings/embedder/hybrid structs.
 
-### 2. Document shape: store the full job, key by `id`
+### 2. Document shape: store the full job, key by `id`, never expose `id`
 
-`JobDocument` = primary key `id` (int64) + searchable text (title, company,
-description, location) + display fields + flattened enrichment facets. Enrichment
-is decoded from the JSONB into typed fields at map time so facets are first-class
-filterable/sortable attributes (not nested JSON). `posted_at` is stored as a unix
-int for `sortableAttributes`. Unenriched jobs index fine — enrichment facets are
-simply absent/zero. *Why store the full doc:* telagon-style, results render
-without a DB round-trip; the search path stays independent of Postgres
-availability. *Alternative — store ids, rehydrate from PG:* rejected (extra
-latency + couples read path back to the DB the engine was meant to offload).
+`JobDocument` = primary key `id` (int64) + the public display fields + flattened
+enrichment facets. Enrichment is decoded from the JSONB into typed fields at map
+time so facets are first-class filterable/sortable attributes (not nested JSON).
+`posted_at` is stored as a unix int for `sortableAttributes`. Unenriched jobs
+index fine — enrichment facets are simply absent/zero. *Why store the full doc:*
+telagon-style, results render without a DB round-trip; the search path stays
+independent of Postgres availability. *Alternative — store ids, rehydrate from
+PG:* rejected (extra latency + couples read path back to the DB the engine was
+meant to offload).
+
+**Consistency with the already-merged public-slug convention.** `add-job-public-slug`
+is live on main: the internal `id` is never exposed and jobs are addressed by
+`public_slug` (the canonical `handler.jobResponse` wire shape omits `id`). The
+search path honors the same contract. `id` is the Meilisearch primary key
+(natural unique key, valid id charset — unlike a slug, which may carry Unicode),
+so the stored document carries it, but the `GET /api/v1/jobs/search` response
+**strips `id`** and identifies each hit by `public_slug`, mirroring the public
+job shape (`public_slug` + the source/display fields). `JobDocument` uses plain
+JSON-friendly types (string/int64/bool/[]string) — not pgtype — to keep the
+index shape simple; the handler emits the public field set under the same JSON
+keys.
 
 ### 3. Index settings + hybrid embedder configured in `EnsureIndex`
 
