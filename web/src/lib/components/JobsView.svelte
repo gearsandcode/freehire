@@ -19,8 +19,15 @@
 
   let jobs = $state(makePaginator());
   let drawerOpen = $state(false);
+  let started = false;
+  let timer: ReturnType<typeof setTimeout>;
 
-  onMount(() => jobs.start());
+  onMount(() => {
+    jobs.start();
+    // Cleanup: a debounce timer left running after unmount would start a fetch
+    // for a component that no longer exists.
+    return () => clearTimeout(timer);
+  });
 
   // Browser back/forward changes the URL query — pull it back into the filters.
   $effect(() => {
@@ -30,8 +37,6 @@
 
   // Re-run the search when any filter changes, debounced. The first effect run is
   // the initial mount, already loaded by onMount, so skip it.
-  let started = false;
-  let timer: ReturnType<typeof setTimeout>;
   $effect(() => {
     filtersToParams(filters.value).toString(); // track every filter field
     if (!started) {
