@@ -1,12 +1,12 @@
 ## 1. Dependency, config, and infra
 
-- [ ] 1.1 Add `github.com/meilisearch/meilisearch-go` (recent version with
+- [x] 1.1 Add `github.com/meilisearch/meilisearch-go` (recent version with
   `Embedder` settings + `SearchRequestHybrid`) via `go get`; `go mod tidy`.
-- [ ] 1.2 Add Meilisearch settings to `internal/config`: `MeiliURL`
+- [x] 1.2 Add Meilisearch settings to `internal/config`: `MeiliURL`
   (default `http://localhost:7700`) and `MeiliKey` (`MEILI_MASTER_KEY`, no
   default). Keep search optional (absent key ⇒ search disabled, server still
   starts).
-- [ ] 1.3 Add a `meilisearch` service to `docker-compose.yml` (pinned
+- [x] 1.3 Add a `meilisearch` service to `docker-compose.yml` (pinned
   `getmeili/meilisearch` image, `MEILI_MASTER_KEY` env, persistent volume, port
   7700) and wire `MEILI_URL`/`MEILI_MASTER_KEY` into the `app` service. Add a
   `make reindex` target.
