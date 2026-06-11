@@ -8,7 +8,7 @@ import (
 // ashbyBaseURL is the Ashby public job-board API root.
 const ashbyBaseURL = "https://api.ashbyhq.com/posting-api/job-board"
 
-// ashby adapts the Ashby public job-board API. The list endpoint carries a plain-text
+// ashby adapts the Ashby public job-board API. The list endpoint carries an HTML
 // description and an explicit remote flag, so no per-posting detail request is needed.
 type ashby struct {
 	http HTTPClient
@@ -24,13 +24,13 @@ func (a ashby) Fetch(ctx context.Context, e CompanyEntry) ([]Job, error) {
 
 	var resp struct {
 		Jobs []struct {
-			ID               string `json:"id"`
-			Title            string `json:"title"`
-			Location         string `json:"location"`
-			JobURL           string `json:"jobUrl"`
-			PublishedAt      string `json:"publishedAt"`
-			DescriptionPlain string `json:"descriptionPlain"`
-			IsRemote         bool   `json:"isRemote"`
+			ID              string `json:"id"`
+			Title           string `json:"title"`
+			Location        string `json:"location"`
+			JobURL          string `json:"jobUrl"`
+			PublishedAt     string `json:"publishedAt"`
+			DescriptionHTML string `json:"descriptionHtml"`
+			IsRemote        bool   `json:"isRemote"`
 		} `json:"jobs"`
 	}
 	if err := a.http.GetJSON(ctx, url, &resp); err != nil {
@@ -45,7 +45,7 @@ func (a ashby) Fetch(ctx context.Context, e CompanyEntry) ([]Job, error) {
 			Title:       j.Title,
 			Company:     e.Company,
 			Location:    j.Location,
-			Description: j.DescriptionPlain,
+			Description: sanitizeHTML(j.DescriptionHTML),
 			Remote:      j.IsRemote,
 			PostedAt:    parseRFC3339(j.PublishedAt),
 		})

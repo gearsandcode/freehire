@@ -3,6 +3,7 @@ package sources
 import (
 	"context"
 	"fmt"
+	"html"
 	"strconv"
 )
 
@@ -48,7 +49,7 @@ func (g greenhouse) Fetch(ctx context.Context, e CompanyEntry) ([]Job, error) {
 			Title:       j.Title,
 			Company:     e.Company,
 			Location:    j.Location.Name,
-			Description: j.Content,
+			Description: sanitizeHTML(html.UnescapeString(j.Content)),
 			Remote:      isRemote(j.Location.Name),
 			PostedAt:    parseRFC3339(j.UpdatedAt),
 		})

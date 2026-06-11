@@ -158,7 +158,44 @@
     </div>
 
     {#if job.description}
-      <p class="whitespace-pre-wrap text-sm leading-relaxed">{job.description}</p>
+      <!-- Description is server-sanitized HTML (see internal/sources), safe to render. -->
+      <div class="job-description text-sm leading-relaxed">{@html job.description}</div>
     {/if}
   </article>
 {/if}
+
+<style>
+  .job-description :global(h1),
+  .job-description :global(h2),
+  .job-description :global(h3),
+  .job-description :global(h4) {
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  .job-description :global(p) {
+    margin: 0.5rem 0;
+  }
+
+  .job-description :global(ul),
+  .job-description :global(ol) {
+    margin: 0.5rem 0;
+    padding-left: 1.25rem;
+  }
+
+  .job-description :global(li) {
+    display: list-item;
+    list-style: disc inside;
+    margin: 0.25rem 0;
+  }
+
+  .job-description :global(a) {
+    text-decoration: underline;
+  }
+
+  .job-description :global(b),
+  .job-description :global(strong) {
+    font-weight: 600;
+  }
+</style>

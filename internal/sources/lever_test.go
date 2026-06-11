@@ -20,7 +20,7 @@ func TestLeverFetch(t *testing.T) {
 			"hostedUrl": "https://jobs.lever.co/lever/abc-123",
 			"createdAt": 1705312800000,
 			"categories": {"location": "Remote"},
-			"descriptionPlain": "Write Go."
+			"description": "<p>Write Go.</p>"
 		}
 	]`}
 
@@ -54,8 +54,8 @@ func TestLeverFetch(t *testing.T) {
 	if j.Location != "Remote" {
 		t.Errorf("Location = %q", j.Location)
 	}
-	if j.Description != "Write Go." {
-		t.Errorf("Description = %q", j.Description)
+	if !strings.Contains(j.Description, "<p>Write Go.</p>") {
+		t.Errorf("Description = %q, want the opening HTML", j.Description)
 	}
 	if !j.Remote {
 		t.Error("Remote = false, want true")
@@ -65,5 +65,79 @@ func TestLeverFetch(t *testing.T) {
 	}
 	if got := j.PostedAt.UTC().Year(); got != 2024 {
 		t.Errorf("PostedAt year = %d, want 2024", got)
+	}
+}
+
+func TestLeverFetchAssemblesBodyFromAllFields(t *testing.T) {
+	// Lever splits the body across description + lists + additional. The plain mirror
+	// is often empty even when the HTML fields carry the real content.
+	fake := &fakeHTTP{body: `[
+		{
+			"id": "p1",
+			"text": "Partner Marketing Manager",
+			"hostedUrl": "https://jobs.lever.co/spotify/p1",
+			"categories": {"location": "Mumbai"},
+			"descriptionPlain": "",
+			"description": "<div><p>Spotify is looking for a manager.</p></div>",
+			"lists": [
+				{"text": "What You'll Do", "content": "<li>Lead partnerships</li>"},
+				{"text": "Who You Are", "content": "<li>5+ years experience</li>"}
+			],
+			"additional": "<p>Spotify is an equal opportunity employer.</p>"
+		}
+	]`}
+
+	jobs, err := NewLever(fake).Fetch(context.Background(), CompanyEntry{
+		Company: "Spotify", Provider: "lever", Board: "spotify",
+	})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+
+	got := jobs[0].Description
+	for _, want := range []string{
+		"Spotify is looking for a manager.",
+		"<h3>", // list headings are wrapped as headings
+		"Who You Are",
+		"Lead partnerships",
+		"5+ years experience",
+		"equal opportunity employer",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("assembled description missing %q\ngot: %s", want, got)
+		}
+	}
+}
+
+func TestLeverFetchHandlesEmptyHeadingsAndFields(t *testing.T) {
+	// Only lists carry content (the bug case: empty description/additional), and one
+	// list has a blank heading.
+	fake := &fakeHTTP{body: `[
+		{
+			"id": "p2",
+			"text": "Engineer",
+			"hostedUrl": "https://jobs.lever.co/acme/p2",
+			"categories": {"location": "Remote"},
+			"description": "",
+			"additional": "",
+			"lists": [
+				{"text": "", "content": "<li>Build things</li>"}
+			]
+		}
+	]`}
+
+	jobs, err := NewLever(fake).Fetch(context.Background(), CompanyEntry{
+		Company: "Acme", Provider: "lever", Board: "acme",
+	})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+
+	got := jobs[0].Description
+	if !strings.Contains(got, "Build things") {
+		t.Errorf("content from a headingless list was dropped\ngot: %s", got)
+	}
+	if strings.Contains(got, "<h3></h3>") {
+		t.Errorf("emitted an empty heading for a blank list title\ngot: %s", got)
 	}
 }

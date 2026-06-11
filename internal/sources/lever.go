@@ -3,13 +3,15 @@ package sources
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // leverBaseURL is the Lever postings API root.
 const leverBaseURL = "https://api.lever.co/v0/postings"
 
 // lever adapts the Lever postings API. The JSON-mode endpoint returns a bare array of
-// postings carrying a plain-text description, so no per-posting detail request is needed.
+// postings whose body is split across HTML description/lists/additional fields, which
+// the adapter assembles, so no per-posting detail request is needed.
 type lever struct {
 	http HTTPClient
 }
@@ -23,12 +25,17 @@ func (l lever) Fetch(ctx context.Context, e CompanyEntry) ([]Job, error) {
 	url := fmt.Sprintf("%s/%s?mode=json", leverBaseURL, e.Board)
 
 	var postings []struct {
-		ID               string `json:"id"`
-		Text             string `json:"text"`
-		HostedURL        string `json:"hostedUrl"`
-		CreatedAt        int64  `json:"createdAt"`
-		DescriptionPlain string `json:"descriptionPlain"`
-		Categories       struct {
+		ID          string `json:"id"`
+		Text        string `json:"text"`
+		HostedURL   string `json:"hostedUrl"`
+		CreatedAt   int64  `json:"createdAt"`
+		Description string `json:"description"`
+		Additional  string `json:"additional"`
+		Lists       []struct {
+			Text    string `json:"text"`
+			Content string `json:"content"`
+		} `json:"lists"`
+		Categories struct {
 			Location string `json:"location"`
 		} `json:"categories"`
 	}
@@ -38,13 +45,28 @@ func (l lever) Fetch(ctx context.Context, e CompanyEntry) ([]Job, error) {
 
 	jobs := make([]Job, 0, len(postings))
 	for _, p := range postings {
+		// Lever splits the body across description + lists (each a heading and its
+		// HTML items) + additional; the plain mirror is unreliable, so assemble the
+		// HTML fields into one document.
+		var body strings.Builder
+		body.WriteString(p.Description)
+		for _, list := range p.Lists {
+			if list.Text != "" {
+				body.WriteString("<h3>")
+				body.WriteString(list.Text)
+				body.WriteString("</h3>")
+			}
+			body.WriteString(list.Content)
+		}
+		body.WriteString(p.Additional)
+
 		jobs = append(jobs, Job{
 			ExternalID:  p.ID,
 			URL:         p.HostedURL,
 			Title:       p.Text,
 			Company:     e.Company,
 			Location:    p.Categories.Location,
-			Description: p.DescriptionPlain,
+			Description: sanitizeHTML(body.String()),
 			Remote:      isRemote(p.Categories.Location),
 			PostedAt:    parseEpochMillis(p.CreatedAt),
 		})

@@ -22,6 +22,7 @@ func TestAshbyFetch(t *testing.T) {
 				"jobUrl": "https://jobs.ashbyhq.com/ashby/job-uuid",
 				"publishedAt": "2024-01-15T10:00:00.000Z",
 				"descriptionPlain": "Run the platform.",
+				"descriptionHtml": "<p>Run the <strong>platform</strong>.</p><script>x()</script>",
 				"isRemote": true
 			}
 		]
@@ -57,8 +58,11 @@ func TestAshbyFetch(t *testing.T) {
 	if j.Location != "San Francisco" {
 		t.Errorf("Location = %q", j.Location)
 	}
-	if j.Description != "Run the platform." {
-		t.Errorf("Description = %q", j.Description)
+	if !strings.Contains(j.Description, "<strong>platform</strong>") {
+		t.Errorf("Description should be the sanitized descriptionHtml, got %q", j.Description)
+	}
+	if strings.Contains(j.Description, "<script") {
+		t.Errorf("Description retained a script tag, got %q", j.Description)
 	}
 	// Remote comes from Ashby's explicit isRemote flag, not the location heuristic.
 	if !j.Remote {

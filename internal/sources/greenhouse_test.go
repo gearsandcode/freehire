@@ -12,6 +12,39 @@ func TestGreenhouseProvider(t *testing.T) {
 	}
 }
 
+func TestGreenhouseFetchDecodesAndSanitizesContent(t *testing.T) {
+	// Greenhouse delivers `content` as entity-encoded HTML.
+	fake := &fakeHTTP{body: `{
+		"jobs": [
+			{
+				"id": 1,
+				"title": "Data Engineer",
+				"absolute_url": "https://boards.greenhouse.io/dropbox/jobs/1",
+				"location": {"name": "Remote"},
+				"content": "&lt;h2&gt;Role&lt;/h2&gt;&lt;p&gt;Build pipelines&lt;/p&gt;&lt;script&gt;alert(1)&lt;/script&gt;"
+			}
+		]
+	}`}
+
+	jobs, err := NewGreenhouse(fake).Fetch(context.Background(), CompanyEntry{
+		Company: "Dropbox", Provider: "greenhouse", Board: "dropbox",
+	})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+
+	got := jobs[0].Description
+	if !strings.Contains(got, "<h2>Role</h2>") || !strings.Contains(got, "<p>Build pipelines</p>") {
+		t.Errorf("Description should be decoded HTML, got: %s", got)
+	}
+	if strings.Contains(got, "&lt;") {
+		t.Errorf("Description still entity-encoded, got: %s", got)
+	}
+	if strings.Contains(got, "<script") {
+		t.Errorf("Description retained a script tag, got: %s", got)
+	}
+}
+
 func TestGreenhouseFetch(t *testing.T) {
 	fake := &fakeHTTP{body: `{
 		"jobs": [
