@@ -67,5 +67,5 @@
   or `make up`): `EnsureIndex` + `IndexJobs` + a keyword search and a
   hybrid (`semantic_ratio>0`) search return expected hits; confirm whether the
   pinned image needs the `vectorStore` experimental flag and lock it in.
-- [ ] 6.3 End-to-end smoke: `make up`, `make reindex`, then
+- [x] 6.3 End-to-end smoke: `make up`, `make reindex`, then
   `GET /api/v1/jobs/search?q=...` returns indexed jobs in the standard envelope.
