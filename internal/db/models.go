@@ -53,3 +53,10 @@ type User struct {
 	PasswordHash pgtype.Text        `json:"password_hash"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
+
+type UserJob struct {
+	UserID    int64              `json:"user_id"`
+	JobID     int64              `json:"job_id"`
+	ViewedAt  pgtype.Timestamptz `json:"viewed_at"`
+	AppliedAt pgtype.Timestamptz `json:"applied_at"`
+}

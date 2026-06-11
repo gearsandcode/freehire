@@ -25,6 +25,7 @@ func startPostgres(t *testing.T) *pgxpool.Pool {
 	for _, f := range []string{
 		"0001_init.sql", "0002_companies.sql",
 		"0003_job_enrichment.sql", "0004_enrichment_outbox.sql",
+		"0005_users.sql", "0006_user_jobs.sql",
 	} {
 		abs, err := filepath.Abs(filepath.Join("..", "..", "migrations", f))
 		if err != nil {

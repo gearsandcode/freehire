@@ -59,6 +59,11 @@ func Register(app *fiber.App, pool *pgxpool.Pool, frontendOrigin, jwtSecret stri
 	api.Get("/companies", h.ListCompanies)
 	api.Get("/companies/:slug", h.GetCompany)
 
+	// Per-user job interactions: recording a view and marking applied both
+	// require a session. The public job reads above stay unauthenticated.
+	api.Post("/jobs/:id/view", auth.RequireAuth(h.issuer), h.RecordView)
+	api.Post("/jobs/:id/apply", auth.RequireAuth(h.issuer), h.MarkApplied)
+
 	// Auth: register/login/logout are public (logout just clears the cookie);
 	// me is guarded by the auth-cookie check.
 	authGroup := api.Group("/auth")

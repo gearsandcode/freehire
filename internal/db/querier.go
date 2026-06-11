@@ -36,11 +36,18 @@ type Querier interface {
 	ListCompanies(ctx context.Context, arg ListCompaniesParams) ([]ListCompaniesRow, error)
 	ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, error)
 	ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyParams) ([]Job, error)
+	// Mark a job as applied for a user. Idempotent and independent of a prior view:
+	// it inserts the row (viewed_at defaults) or updates applied_at in place.
+	MarkJobApplied(ctx context.Context, arg MarkJobAppliedParams) (UserJob, error)
 	// Count a failed attempt: bump attempts, record the error, and dead-letter (set
 	// failed_at) once attempts reach the max. The lease (claimed_at) is intentionally
 	// left in place — its expiry gates the retry to a later run and doubles as the
 	// crash reaper, so a failed entry is never reprocessed within the same run.
 	RecordEnrichmentFailure(ctx context.Context, arg RecordEnrichmentFailureParams) (RecordEnrichmentFailureRow, error)
+	// Record (or refresh) a user's view of a job. Idempotent on (user_id, job_id):
+	// the first view creates the row, a repeat view touches viewed_at. Returns the
+	// row so the caller learns the current applied_at in the same round-trip.
+	RecordJobView(ctx context.Context, arg RecordJobViewParams) (UserJob, error)
 	// Targeted enrichment write used by the enrichment command: set only the payload
 	// and the provenance stamp, touching no raw source field. Kept separate from
 	// UpsertJob (the ingest full-upsert path) so ingest and enrichment stay decoupled.
