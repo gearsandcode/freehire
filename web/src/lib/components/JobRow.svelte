@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Globe } from '@lucide/svelte';
+  import CompanyLogo from './CompanyLogo.svelte';
   import { cardTags, formatSalary } from '$lib/enrichment';
   import type { Job } from '$lib/types';
   import { timeAgo } from '$lib/utils';
@@ -26,7 +26,7 @@
   <div class="flex items-start justify-between gap-3">
     <div class="flex min-w-0 flex-wrap items-center gap-2">
       <span class="inline-flex items-center gap-1.5 font-semibold">
-        <Globe class="size-4 shrink-0 text-muted-foreground" />
+        <CompanyLogo name={job.company} />
         {job.company || 'Unknown company'}
       </span>
       {#each tags as tag (tag)}

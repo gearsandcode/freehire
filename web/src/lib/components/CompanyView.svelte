@@ -5,6 +5,7 @@
   import States from './States.svelte';
   import JobRow from './JobRow.svelte';
   import LoadMore from './LoadMore.svelte';
+  import CompanyLogo from './CompanyLogo.svelte';
 
   let { slug }: { slug: string } = $props();
 
@@ -34,7 +35,10 @@
 {:else if pager.status === 'error' || !company}
   <States state="error" message="Company not found." />
 {:else}
-  <h1 class="text-xl font-semibold tracking-tight">{company.name}</h1>
+  <div class="flex items-center gap-3">
+    <CompanyLogo name={company.name} size="size-8" />
+    <h1 class="text-xl font-semibold tracking-tight">{company.name}</h1>
+  </div>
 
   <div class="mt-4">
     {#if pager.items.length === 0}
