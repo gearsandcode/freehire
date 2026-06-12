@@ -17,6 +17,9 @@ export class Paginator<T> {
   // already-loaded items stay on screen while the error shows by the button.
   loadMoreError = $state(false);
   hasMore = $state(false);
+  // Total items matching the current query (the search engine's estimate); shown as
+  // the result count and refreshed each page since the estimate can drift.
+  total = $state(0);
 
   #fetch: FetchSlice<T>;
   #limit: number;
@@ -31,6 +34,7 @@ export class Paginator<T> {
     try {
       const slice = await this.#fetch(this.#limit, 0);
       this.items = slice.items;
+      this.total = slice.total ?? 0;
       this.hasMore = slice.hasMore;
       this.status = 'ready';
     } catch {
@@ -46,6 +50,7 @@ export class Paginator<T> {
     try {
       const slice = await this.#fetch(this.#limit, this.items.length);
       this.items = [...this.items, ...slice.items];
+      this.total = slice.total ?? 0;
       this.hasMore = slice.hasMore;
     } catch {
       this.loadMoreError = true;

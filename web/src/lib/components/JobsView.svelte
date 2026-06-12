@@ -84,6 +84,9 @@
     {:else if jobs.items.length === 0}
       <States state="empty" message="No matching jobs." />
     {:else}
+      <p class="mb-3 text-sm text-muted-foreground" aria-live="polite">
+        {jobs.total.toLocaleString()} {jobs.total === 1 ? 'job' : 'jobs'}
+      </p>
       <div class="flex flex-col gap-3">
         {#each jobs.items as job (job.public_slug)}
           <JobRow {job} />

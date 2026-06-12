@@ -10,9 +10,11 @@ import type { Job, Company, CompanyListItem, ListMeta, User, UserJob } from './t
 // every request. No absolute URL, no CORS.
 const BASE = '';
 
-/** A page of list items plus whether more remain after it. */
+/** A page of list items, optionally the total matching the query (endpoints that
+ *  report one), and whether more remain. */
 export interface Slice<T> {
   items: T[];
+  total?: number;
   hasMore: boolean;
 }
 
@@ -56,7 +58,11 @@ function query(limit: number, offset: number): string {
 
 /** Turn a count-bearing page into a Slice; more remain unless we've reached total. */
 function toSlice<T>(page: Page<T>, offset: number): Slice<T> {
-  return { items: page.data, hasMore: offset + page.data.length < page.meta.total };
+  return {
+    items: page.data,
+    total: page.meta.total,
+    hasMore: offset + page.data.length < page.meta.total,
+  };
 }
 
 export async function listJobs(limit: number, offset: number): Promise<Slice<Job>> {
