@@ -22,9 +22,9 @@ first (RED). Web tasks verify via `svelte-check` + lint (no unit runner).
 
 ## 4. Dedup: one `listResponse` helper for the list envelope
 
-- [ ] 4.1 Add free func `listResponse(c *fiber.Ctx, data any, total int64, limit, offset int) error` next to `pageParams` in `internal/handler/handler.go`.
-- [ ] 4.2 Replace the verbatim `{data, meta}` envelopes in `ListJobs` (jobs.go), `ListCompanies` (companies.go), `SearchJobs` (search.go) with `return listResponse(...)`. Single-item `{data}` handlers untouched.
-- [ ] 4.3 `go build ./... && go vet ./... && go test ./...` green (handler tests assert the same shape).
+- [x] 4.1 Add free func `listResponse(c *fiber.Ctx, data any, total int64, limit, offset int) error` next to `pageParams` in `internal/handler/handler.go`.
+- [x] 4.2 Replace the verbatim `{data, meta}` envelopes in `ListJobs` (jobs.go), `ListCompanies` (companies.go), `SearchJobs` (search.go) with `return listResponse(...)`. Single-item `{data}` handlers untouched.
+- [x] 4.3 `go build ./... && go vet ./... && go test ./...` green (handler tests assert the same shape).
 
 ## 5. Efficiency: slim `GetJobIDBySlug` for the view/apply path
 
