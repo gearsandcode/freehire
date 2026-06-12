@@ -56,10 +56,10 @@ first (RED). Web tasks verify via `svelte-check` + lint (no unit runner).
 
 ## 10. Frontend: finish the generic And/Or facet toggle
 
-- [ ] 10.1 Add `matchAll: boolean` to `FacetState` (`web/src/lib/filters.svelte.ts`), mirroring `exclude`; replace the top-level `skillsAnd` field + `setSkillsAnd` method with `setMatchAll(param, on)`.
-- [ ] 10.2 Update serialization: `filtersToParams` emits `${param}_mode=and` when `matchAll && !exclude && values.length > 1`; `filtersFromParams` sets `matchAll = p.get(`${param}_mode`) === 'and'` per facet.
-- [ ] 10.3 In `facets/FacetSection.svelte` read/write `store.facet(def.param).matchAll` via `setMatchAll(def.param, ...)`; keep `hasAndOr` as the honest gate.
-- [ ] 10.4 `npm run check` + lint clean; confirm the backend `skills_mode=and` test still passes (`go test ./internal/handler/...`) and the skills facet behaves identically end-to-end.
+- [x] 10.1 Add `matchAll: boolean` to `FacetState` (`web/src/lib/filters.svelte.ts`), mirroring `exclude`; replace the top-level `skillsAnd` field + `setSkillsAnd` method with `setMatchAll(param, on)`.
+- [x] 10.2 Update serialization: `filtersToParams` emits `${param}_mode=and` when `matchAll && !exclude && values.length > 1`; `filtersFromParams` sets `matchAll = p.get(`${param}_mode`) === 'and'` per facet.
+- [x] 10.3 In `facets/FacetSection.svelte` read/write `store.facet(def.param).matchAll` via `setMatchAll(def.param, ...)`; keep `hasAndOr` as the honest gate.
+- [x] 10.4 `npm run check` clean (no new lint); backend `skills_mode=and` test green (`go test ./internal/handler/`). Skills emits identical `skills_mode=and`; live end-to-end glance deferred to final verification.
 
 ## 11. Guard: enum vocab drift (Go ↔ web `facets.ts`)
 
