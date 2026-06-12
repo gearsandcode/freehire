@@ -28,10 +28,10 @@ first (RED). Web tasks verify via `svelte-check` + lint (no unit runner).
 
 ## 5. Efficiency: slim `GetJobIDBySlug` for the view/apply path
 
-- [ ] 5.1 RED — add/extend a test asserting the view/apply interaction path resolves a job by slug to its id (and 404s on an unknown slug) without depending on the heavy columns.
-- [ ] 5.2 Add `-- name: GetJobIDBySlug :one` / `SELECT id FROM jobs WHERE public_slug = $1;` to `internal/db/queries/jobs.sql`; run `make sqlc`; commit regenerated `jobs.sql.go`.
-- [ ] 5.3 Change `interactionParams` (`internal/handler/user_jobs.go`) to call `GetJobIDBySlug`, using the returned int64 id directly (drop the `job.ID` deref); update the doc comment that names `GetJobBySlug`. Leave `GetJobBySlug` (`SELECT *`) for the public detail handler.
-- [ ] 5.4 `go build ./... && go vet ./... && go test ./...` green.
+- [x] 5.1 RED — add/extend a test asserting the view/apply interaction path resolves a job by slug to its id (and 404s on an unknown slug) without depending on the heavy columns.
+- [x] 5.2 Add `-- name: GetJobIDBySlug :one` / `SELECT id FROM jobs WHERE public_slug = $1;` to `internal/db/queries/jobs.sql`; run `make sqlc`; commit regenerated `jobs.sql.go`.
+- [x] 5.3 Change `interactionParams` (`internal/handler/user_jobs.go`) to call `GetJobIDBySlug`, using the returned int64 id directly (drop the `job.ID` deref); update the doc comment that names `GetJobBySlug`. Leave `GetJobBySlug` (`SELECT *`) for the public detail handler.
+- [x] 5.4 `go build ./... && go vet ./... && go test ./...` green; `TestGetJobIDBySlug` + `TestUserJobs` integration green.
 
 ## 6. Simplify: collapse smartRecruiters parallel slices
 
