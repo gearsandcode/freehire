@@ -34,5 +34,5 @@
 ## 6. Verification & docs
 
 - [x] 6.1 `go build ./... && go vet ./... && go test ./...` pass
-- [ ] 6.2 Manual e2e with at least one real provider (Google or GitHub): new-user sign-in, returning sign-in, and email-linking to an existing password account
+- [x] 6.2 Manual e2e with at least one real provider (Google or GitHub): new-user sign-in, returning sign-in, and email-linking to an existing password account
 - [x] 6.3 Update `AGENT.md` (auth convention + config) with the OAuth surface
