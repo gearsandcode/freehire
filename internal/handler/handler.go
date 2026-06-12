@@ -102,6 +102,10 @@ func Register(app *fiber.App, pool *pgxpool.Pool, frontendOrigin, jwtSecret stri
 	api.Post("/jobs/:slug/save", auth.RequireAuth(h.issuer), h.SaveJob)
 	api.Delete("/jobs/:slug/save", auth.RequireAuth(h.issuer), h.UnsaveJob)
 
+	// User-scoped reads live under /me (consistent with /auth/me): the my-jobs
+	// listing joins the caller's interactions with the jobs they touch.
+	api.Get("/me/jobs", auth.RequireAuth(h.issuer), h.ListMyJobs)
+
 	// Auth: register/login/logout are public (logout just clears the cookie);
 	// me is guarded by the auth-cookie check.
 	authGroup := api.Group("/auth")

@@ -17,7 +17,7 @@
 
 ## 3. API: my-jobs listing
 
-- [ ] 3.1 `GET /api/v1/me/jobs?filter=all|saved|applied` behind `RequireAuth`:
+- [x] 3.1 `GET /api/v1/me/jobs?filter=all|saved|applied` behind `RequireAuth`:
       jobview-shaped jobs + interaction fields, `meta` with
       `total/limit/offset` + `counts`; `400` on unknown filter; handler tests
 
