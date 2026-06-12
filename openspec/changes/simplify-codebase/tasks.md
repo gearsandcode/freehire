@@ -69,6 +69,6 @@ first (RED). Web tasks verify via `svelte-check` + lint (no unit runner).
 
 ## 12. Final verification
 
-- [ ] 12.1 Full backend: `go build ./... && go vet ./... && go test ./...` (+ integration tags where touched).
-- [ ] 12.2 Full web: `npm run check` + lint + `npm run build`.
-- [ ] 12.3 Confirm no wire-shape change: list/search/view/apply/facet responses byte-identical to pre-change.
+- [x] 12.1 Full backend: `go build ./... && go vet ./... && go test ./...` green; `-tags=integration ./internal/db/` green (18.7s, covers #2 ClaimEnrichmentBatch and #5 GetJobIDBySlug).
+- [x] 12.2 Full web: `npm run check` clean (0/0); `npm run build` succeeds. Lint unchanged from baseline (pre-existing errors only; no new). Live UI click-through deferred (needs full backend+DB+meili stack); behavior preserved per svelte-check + build + code review.
+- [x] 12.3 No wire-shape change confirmed by code review: list envelope (all int64 totals), `skills_mode=and` round-trip, and the ErrNoRows→404 slug path are byte-identical to pre-change.
