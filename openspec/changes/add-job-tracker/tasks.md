@@ -23,18 +23,18 @@
 
 ## 4. Web: api client + types
 
-- [ ] 4.1 `saveJob`/`unsaveJob`/`listMyJobs` in `web/src/lib/api.ts`; `UserJob`
+- [x] 4.1 `saveJob`/`unsaveJob`/`listMyJobs` in `web/src/lib/api.ts`; `UserJob`
       type gains `saved_at`; `MyJob` item type
 
 ## 5. Web: My jobs page
 
-- [ ] 5.1 `/my/jobs` route + page with All / Saved / Applied tabs (counts as
+- [x] 5.1 `/my/jobs` route + page with All / Saved / Applied tabs (counts as
       badges), reusing `JobRow`, signed-out state prompts sign-in; UserMenu
       link; `svelte-check` clean
 
 ## 6. Web: Save toggle on the job page
 
-- [ ] 6.1 Save/Unsave button on `JobView` driven by the interaction returned
+- [x] 6.1 Save/Unsave button on `JobView` driven by the interaction returned
       from the silent view recording; optimistic flip on the API response
 
 ## 7. Rollout
