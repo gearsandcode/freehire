@@ -27,7 +27,7 @@ UPDATE telegram_posts p
 SET claimed_at = now()
 FROM claimable c
 WHERE p.channel = c.channel AND p.msg_id = c.msg_id
-RETURNING p.channel, p.msg_id, p.text, p.posted_at
+RETURNING p.channel, p.msg_id, p.text, p.links, p.posted_at
 `
 
 type ClaimTelegramPostsParams struct {
@@ -39,6 +39,7 @@ type ClaimTelegramPostsRow struct {
 	Channel  string             `json:"channel"`
 	MsgID    int64              `json:"msg_id"`
 	Text     string             `json:"text"`
+	Links    []byte             `json:"links"`
 	PostedAt pgtype.Timestamptz `json:"posted_at"`
 }
 
@@ -59,6 +60,7 @@ func (q *Queries) ClaimTelegramPosts(ctx context.Context, arg ClaimTelegramPosts
 			&i.Channel,
 			&i.MsgID,
 			&i.Text,
+			&i.Links,
 			&i.PostedAt,
 		); err != nil {
 			return nil, err
@@ -72,8 +74,8 @@ func (q *Queries) ClaimTelegramPosts(ctx context.Context, arg ClaimTelegramPosts
 }
 
 const insertTelegramPost = `-- name: InsertTelegramPost :execrows
-INSERT INTO telegram_posts (channel, msg_id, text, posted_at, extracted_at)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO telegram_posts (channel, msg_id, text, links, posted_at, extracted_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (channel, msg_id) DO NOTHING
 `
 
@@ -81,6 +83,7 @@ type InsertTelegramPostParams struct {
 	Channel     string             `json:"channel"`
 	MsgID       int64              `json:"msg_id"`
 	Text        string             `json:"text"`
+	Links       []byte             `json:"links"`
 	PostedAt    pgtype.Timestamptz `json:"posted_at"`
 	ExtractedAt pgtype.Timestamptz `json:"extracted_at"`
 }
@@ -94,6 +97,7 @@ func (q *Queries) InsertTelegramPost(ctx context.Context, arg InsertTelegramPost
 		arg.Channel,
 		arg.MsgID,
 		arg.Text,
+		arg.Links,
 		arg.PostedAt,
 		arg.ExtractedAt,
 	)

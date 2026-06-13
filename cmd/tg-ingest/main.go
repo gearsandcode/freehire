@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 	"time"
@@ -16,6 +17,8 @@ import (
 	"github.com/strelov1/freehire/internal/config"
 	"github.com/strelov1/freehire/internal/database"
 	"github.com/strelov1/freehire/internal/db"
+	"github.com/strelov1/freehire/internal/linksource"
+	"github.com/strelov1/freehire/internal/sources"
 	"github.com/strelov1/freehire/internal/telegram"
 )
 
@@ -47,6 +50,7 @@ func main() {
 		Fetcher: telegram.NewFetcher(),
 		Store:   &postStore{q: db.New(pool)},
 		Delay:   2 * time.Second, // polite pacing toward t.me
+		Links:   linkMatcher{reg: linksource.All(sources.NewClient())},
 	}
 
 	stats, err := runner.Run(ctx, chanCfg.Channels)
@@ -67,10 +71,19 @@ func (s *postStore) Insert(ctx context.Context, channel string, p telegram.Post,
 	if done {
 		extractedAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
 	}
+	links := []byte("[]")
+	if len(p.Links) > 0 {
+		if b, err := json.Marshal(p.Links); err == nil {
+			links = b
+		} else {
+			return false, err
+		}
+	}
 	rows, err := s.q.InsertTelegramPost(ctx, db.InsertTelegramPostParams{
 		Channel:     channel,
 		MsgID:       p.MsgID,
 		Text:        p.Text,
+		Links:       links,
 		PostedAt:    pgtype.Timestamptz{Time: p.PostedAt, Valid: true},
 		ExtractedAt: extractedAt,
 	})
@@ -81,3 +94,19 @@ func (s *postStore) Insert(ctx context.Context, channel string, p telegram.Post,
 }
 
 var _ telegram.PostStore = (*postStore)(nil)
+
+// linkMatcher adapts the linksource registry to telegram.LinkMatcher, so the crawl keeps
+// link-out digest posts whose teaser text alone does not look like a vacancy.
+type linkMatcher struct {
+	reg []linksource.LinkSource
+}
+
+func (m linkMatcher) Matches(links []telegram.Link) bool {
+	urls := make([]string, len(links))
+	for i, l := range links {
+		urls[i] = l.URL
+	}
+	return linksource.MatchesAny(m.reg, urls)
+}
+
+var _ telegram.LinkMatcher = linkMatcher{}

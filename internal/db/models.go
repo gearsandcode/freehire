@@ -75,6 +75,7 @@ type TelegramPost struct {
 	FailedAt    pgtype.Timestamptz `json:"failed_at"`
 	LastError   string             `json:"last_error"`
 	ExtractedAt pgtype.Timestamptz `json:"extracted_at"`
+	Links       []byte             `json:"links"`
 }
 
 type User struct {

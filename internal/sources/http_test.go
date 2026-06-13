@@ -152,6 +152,35 @@ func TestClientGetJSONErrorsOnClientError(t *testing.T) {
 	}
 }
 
+func TestClientGetHTMLResolvedFollowsRedirectAndReturnsFinalURL(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/short", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/vacancies/1000166712", http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("/vacancies/1000166712", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html><body><h1>Product manager</h1></body></html>`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c := &Client{httpClient: srv.Client()}
+
+	node, final, err := c.GetHTMLResolved(context.Background(), srv.URL+"/short")
+	if err != nil {
+		t.Fatalf("GetHTMLResolved: %v", err)
+	}
+	if node == nil {
+		t.Fatal("node is nil, want a parsed tree")
+	}
+	if !strings.HasSuffix(final, "/vacancies/1000166712") {
+		t.Errorf("final URL = %q, want it to end at the redirect target", final)
+	}
+	if got := textContent(node); !strings.Contains(got, "Product manager") {
+		t.Errorf("parsed text = %q, want the destination page body", got)
+	}
+}
+
 func TestClientRetriesOn429ThenSucceeds(t *testing.T) {
 	var attempts int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

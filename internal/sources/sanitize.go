@@ -35,3 +35,11 @@ func newDescriptionPolicy() *bluemonday.Policy {
 func sanitizeHTML(s string) string {
 	return descriptionPolicy.Sanitize(s)
 }
+
+// SanitizeHTML is the exported description sanitizer, for sibling packages that build
+// sources.Job values outside this package (e.g. internal/linksource).
+func SanitizeHTML(s string) string { return sanitizeHTML(s) }
+
+// IsRemote is the exported form of the shared location-based remote heuristic, so sibling
+// packages flag remote jobs consistently with the ATS adapters.
+func IsRemote(location string) bool { return isRemote(location) }
