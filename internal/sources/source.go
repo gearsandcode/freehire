@@ -55,6 +55,7 @@ func All(c HTTPClient) map[string]Source {
 		NewRippling(c),
 		NewBambooHR(c),
 		NewWorkday(c),
+		NewHuntflow(c),
 	)
 }
 
@@ -91,9 +92,11 @@ func fetchDetails[P any](postings []P, workers int, fetch func(P) (Job, bool)) [
 }
 
 // isRemote infers a job's remote flag from its location text. Adapters share it so
-// the heuristic stays consistent across platforms.
+// the heuristic stays consistent across platforms. It matches the English "remote" and
+// the Russian "удал…" (удалённо/удалённая/удалёнка) so RU-segment boards flag correctly.
 func isRemote(location string) bool {
-	return strings.Contains(strings.ToLower(location), "remote")
+	l := strings.ToLower(location)
+	return strings.Contains(l, "remote") || strings.Contains(l, "удал")
 }
 
 // parseLayout parses a platform timestamp with the given layout into a posted_at,
