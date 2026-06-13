@@ -7,25 +7,25 @@ adapters; tests use a fake `HTTPClient` over canned JSON — no network in unit 
 
 ## 1. Infra — boardless config (TDD)
 
-- [ ] 1.1 Test: in `config_test.go`, `Validate` accepts an entry with an empty `board`
+- [x] 1.1 Test: in `config_test.go`, `Validate` accepts an entry with an empty `board`
       when its provider implements the `boardless` marker, and still rejects an empty
       `board` for a board-based provider (e.g. `greenhouse`) and an unknown provider
-- [ ] 1.2 Implement: add `type boardless interface{ boardless() }` in `source.go`; in
+- [x] 1.2 Implement: add `type boardless interface{ boardless() }` in `source.go`; in
       `config.go` `Validate`, skip the empty-board check when
       `registry[c.Provider]` implements `boardless`. No change to existing adapters
-- [ ] 1.3 Test: a `boardless`-implementing fake source registered under a key validates
+- [x] 1.3 Test: a `boardless`-implementing fake source registered under a key validates
       with an empty board; confirm `reg`'s duplicate-provider guard still holds
 
 ## 2. Infra — header-aware HTTP client (TDD)
 
-- [ ] 2.1 Test: in `http_test.go`, a request issued via `GetJSONWithHeaders` /
+- [x] 2.1 Test: in `http_test.go`, a request issued via `GetJSONWithHeaders` /
       `PostJSONWithHeaders` carries the custom headers alongside `User-Agent`/`Accept`;
       a request via the existing `GetJSON`/`PostJSON` sends no custom header (unchanged)
-- [ ] 2.2 Implement: add `GetJSONWithHeaders(ctx, url, headers map[string]string, v)` and
+- [x] 2.2 Implement: add `GetJSONWithHeaders(ctx, url, headers map[string]string, v)` and
       `PostJSONWithHeaders(ctx, url, headers, body, v)` to the `HTTPClient` interface and
       `Client`; have `GetJSON`/`PostJSON` delegate with `nil` headers; set custom headers
       in `do` without overriding `User-Agent`/`Accept`
-- [ ] 2.3 Update the shared test fake(s) to implement the two new interface methods and to
+- [x] 2.3 Update the shared test fake(s) to implement the two new interface methods and to
       record received headers (so adapter tests can assert them)
 
 ## 3. Yandex (`yandex`, board ru/com — NOT boardless) (TDD)

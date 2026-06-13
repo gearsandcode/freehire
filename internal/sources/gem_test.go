@@ -36,6 +36,14 @@ func (f *gqlHTTP) GetHTML(context.Context, string) (*html.Node, error) {
 	return nil, errors.New("gqlHTTP: unexpected GetHTML")
 }
 
+func (f *gqlHTTP) GetJSONWithHeaders(context.Context, string, map[string]string, any) error {
+	return errors.New("gqlHTTP: unexpected GetJSONWithHeaders")
+}
+
+func (f *gqlHTTP) PostJSONWithHeaders(context.Context, string, map[string]string, any, any) error {
+	return errors.New("gqlHTTP: unexpected PostJSONWithHeaders")
+}
+
 func (f *gqlHTTP) PostJSON(_ context.Context, url string, body, v any) error {
 	f.gotURL = url
 	req, ok := body.(gemRequest)

@@ -33,6 +33,58 @@ func TestClientGetJSONDecodesAndSendsUserAgent(t *testing.T) {
 	}
 }
 
+func TestClientGetJSONWithHeadersSendsCustomHeaderAlongsideStandard(t *testing.T) {
+	var gotKey, gotUA, gotAccept string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotKey = r.Header.Get("X-Api-Key")
+		gotUA = r.Header.Get("User-Agent")
+		gotAccept = r.Header.Get("Accept")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	c := &Client{httpClient: srv.Client(), userAgent: "freehire-test"}
+
+	var out struct {
+		OK bool `json:"ok"`
+	}
+	err := c.GetJSONWithHeaders(context.Background(), srv.URL, map[string]string{"X-Api-Key": "secret"}, &out)
+	if err != nil {
+		t.Fatalf("GetJSONWithHeaders: %v", err)
+	}
+	if gotKey != "secret" {
+		t.Errorf("X-Api-Key = %q, want secret", gotKey)
+	}
+	if gotUA != "freehire-test" {
+		t.Errorf("User-Agent = %q, want it preserved", gotUA)
+	}
+	if !strings.Contains(gotAccept, "json") {
+		t.Errorf("Accept = %q, want it to request json", gotAccept)
+	}
+}
+
+func TestClientPostJSONWithHeadersSendsCustomHeader(t *testing.T) {
+	var gotRSC string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotRSC = r.Header.Get("RSC")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	c := &Client{httpClient: srv.Client()}
+
+	var out struct {
+		OK bool `json:"ok"`
+	}
+	err := c.PostJSONWithHeaders(context.Background(), srv.URL, map[string]string{"RSC": "1"}, map[string]string{"q": "x"}, &out)
+	if err != nil {
+		t.Fatalf("PostJSONWithHeaders: %v", err)
+	}
+	if gotRSC != "1" {
+		t.Errorf("RSC = %q, want 1", gotRSC)
+	}
+}
+
 func TestClientGetXMLDecodesAndSendsXMLAccept(t *testing.T) {
 	var gotAccept string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

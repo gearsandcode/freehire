@@ -91,3 +91,21 @@ func TestConfigValidateAcceptsKnownProviders(t *testing.T) {
 		t.Errorf("Validate: unexpected error %v", err)
 	}
 }
+
+// A single-company adapter that declares itself boardless may omit board.
+func TestConfigValidateAcceptsEmptyBoardForBoardlessProvider(t *testing.T) {
+	cfg := Config{Provider: "ozon", Sources: []CompanyEntry{{Company: "Ozon", Board: ""}}}
+
+	if err := cfg.Validate(reg(fakeBoardlessSource{"ozon"})); err != nil {
+		t.Errorf("Validate: boardless provider with empty board should be accepted, got %v", err)
+	}
+}
+
+// A boardless provider still needs a company.
+func TestConfigValidateRejectsEmptyCompanyEvenForBoardlessProvider(t *testing.T) {
+	cfg := Config{Provider: "ozon", Sources: []CompanyEntry{{Company: "", Board: ""}}}
+
+	if err := cfg.Validate(reg(fakeBoardlessSource{"ozon"})); err == nil {
+		t.Fatal("expected error for empty company, got nil")
+	}
+}

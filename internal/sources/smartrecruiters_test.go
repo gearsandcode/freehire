@@ -38,6 +38,14 @@ func (r *routedHTTP) PostJSON(_ context.Context, url string, _, v any) error {
 	return r.decode(url, json.Unmarshal, v)
 }
 
+func (r *routedHTTP) GetJSONWithHeaders(_ context.Context, url string, _ map[string]string, v any) error {
+	return r.decode(url, json.Unmarshal, v)
+}
+
+func (r *routedHTTP) PostJSONWithHeaders(_ context.Context, url string, _ map[string]string, _, v any) error {
+	return r.decode(url, json.Unmarshal, v)
+}
+
 func (r *routedHTTP) GetHTML(_ context.Context, url string) (*html.Node, error) {
 	r.mu.Lock()
 	r.calls++

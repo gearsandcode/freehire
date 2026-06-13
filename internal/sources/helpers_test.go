@@ -13,13 +13,32 @@ import (
 // body, so adapter tests exercise field mapping without the network. Shared by every
 // adapter test in this package.
 type fakeHTTP struct {
-	body   string
-	err    error
-	gotURL string
+	body       string
+	err        error
+	gotURL     string
+	gotHeaders map[string]string
 }
 
 func (f *fakeHTTP) GetJSON(_ context.Context, url string, v any) error {
 	f.gotURL = url
+	if f.err != nil {
+		return f.err
+	}
+	return json.Unmarshal([]byte(f.body), v)
+}
+
+func (f *fakeHTTP) GetJSONWithHeaders(_ context.Context, url string, headers map[string]string, v any) error {
+	f.gotURL = url
+	f.gotHeaders = headers
+	if f.err != nil {
+		return f.err
+	}
+	return json.Unmarshal([]byte(f.body), v)
+}
+
+func (f *fakeHTTP) PostJSONWithHeaders(_ context.Context, url string, headers map[string]string, _, v any) error {
+	f.gotURL = url
+	f.gotHeaders = headers
 	if f.err != nil {
 		return f.err
 	}

@@ -40,6 +40,11 @@ type Source interface {
 	Fetch(ctx context.Context, e CompanyEntry) ([]Job, error)
 }
 
+// boardless marks an adapter whose source is one company's own API, with no per-tenant
+// board id. Config validation lets a boardless provider's entries omit board. Multi-tenant
+// ATS adapters (greenhouse, lever, …) do not implement it and still require a board.
+type boardless interface{ boardless() }
+
 // All assembles the registered adapters into a provider-keyed registry, sharing one
 // HTTP client across them. Adding a platform is a new adapter plus one line here.
 func All(c HTTPClient) map[string]Source {

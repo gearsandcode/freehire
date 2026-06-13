@@ -11,6 +11,16 @@ func (f fakeSource) Provider() string { return f.provider }
 
 func (f fakeSource) Fetch(context.Context, CompanyEntry) ([]Job, error) { return nil, nil }
 
+// fakeBoardlessSource is a fakeSource that declares itself boardless, so config
+// validation lets its entries omit board.
+type fakeBoardlessSource struct{ provider string }
+
+func (f fakeBoardlessSource) Provider() string { return f.provider }
+
+func (f fakeBoardlessSource) Fetch(context.Context, CompanyEntry) ([]Job, error) { return nil, nil }
+
+func (f fakeBoardlessSource) boardless() {}
+
 func TestRegIndexesByProvider(t *testing.T) {
 	r := reg(fakeSource{"greenhouse"}, fakeSource{"lever"})
 

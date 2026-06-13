@@ -44,14 +44,18 @@ func ParseConfig(provider string, data []byte) (Config, error) {
 // Validate checks the file's provider is registered and every entry is complete, so
 // the ingest command fails fast instead of silently skipping a misconfigured board.
 func (c Config) Validate(registry map[string]Source) error {
-	if _, ok := registry[c.Provider]; !ok {
+	src, ok := registry[c.Provider]
+	if !ok {
 		return fmt.Errorf("sources: unknown provider %q (from the file name)", c.Provider)
 	}
+	// A boardless provider crawls one company's own API and has no board id, so its
+	// entries may omit board; every other provider still requires one.
+	_, noBoard := src.(boardless)
 	for _, e := range c.Sources {
 		if e.Company == "" {
 			return fmt.Errorf("sources: %s entry has empty company", c.Provider)
 		}
-		if e.Board == "" {
+		if e.Board == "" && !noBoard {
 			return fmt.Errorf("sources: %s entry for company %q has empty board", c.Provider, e.Company)
 		}
 	}
