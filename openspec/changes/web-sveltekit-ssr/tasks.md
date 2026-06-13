@@ -1,6 +1,6 @@
 ## 1. SvelteKit scaffold & shared client
 
-- [ ] 1.1 Add SvelteKit + `adapter-node` to `web/` (deps, `svelte.config.js`,
+- [x] 1.1 Add SvelteKit + `adapter-node` to `web/` (deps, `svelte.config.js`,
   `vite.config.ts`, `app.html`, `src/app.d.ts`); keep `app.css`, `lib/`
   components, `types.ts`. `svelte-check` passes on the empty skeleton.
 - [ ] 1.2 Refactor `lib/api.ts` to accept an injected `fetch` so the same client
