@@ -126,3 +126,22 @@ export interface MyJobCounts {
   saved: number;
   applied: number;
 }
+
+/** An API key as returned by the management endpoints — metadata only; the
+ *  plaintext token is never part of this shape. `token_prefix` is a short,
+ *  non-secret leading slice (e.g. "fhk_Ab12cd") shown so the user can tell keys
+ *  apart. Timestamps are RFC3339 strings or null. */
+export interface ApiKey {
+  id: number;
+  name: string;
+  token_prefix: string;
+  created_at: string | null;
+  last_used_at: string | null;
+  expires_at: string | null;
+}
+
+/** The response of creating a key: the metadata plus the plaintext `token`,
+ *  returned exactly once and never retrievable again. */
+export interface CreatedApiKey extends ApiKey {
+  token: string;
+}

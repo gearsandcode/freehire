@@ -51,6 +51,14 @@
       >
         My jobs
       </a>
+      <a
+        href="/my/api-keys"
+        role="menuitem"
+        onclick={() => (open = false)}
+        class="block px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        API keys
+      </a>
       <div class="my-1 h-px bg-border"></div>
       <button
         type="button"
