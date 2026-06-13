@@ -65,11 +65,21 @@ function toSlice<T>(page: Page<T>, offset: number): Slice<T> {
  *  - SvelteKit server `load`: pass `event.fetch` and the internal API origin
  *    (`serverApi`), because a server-side relative `/api` would hit the Node app
  *    itself, not nginx→Go. `baseUrl` resolves that to a real server-to-server call. */
-export function createApi(fetchImpl: typeof fetch = fetch, baseUrl = '') {
+export function createApi(
+  fetchImpl: typeof fetch = fetch,
+  baseUrl = '',
+  defaultHeaders: Record<string, string> = {},
+) {
   /** The single place this module touches fetch. Always sends credentials so the
-   *  auth cookie rides along, and turns a non-2xx into an ApiError. */
+   *  auth cookie rides along, and turns a non-2xx into an ApiError. `defaultHeaders`
+   *  lets a server caller forward the request's Cookie to an absolute API URL
+   *  (where `event.fetch` would not). */
   async function call(path: string, init?: RequestInit): Promise<Response> {
-    const res = await fetchImpl(`${baseUrl}${path}`, { credentials: 'include', ...init });
+    const res = await fetchImpl(`${baseUrl}${path}`, {
+      credentials: 'include',
+      ...init,
+      headers: { ...defaultHeaders, ...init?.headers },
+    });
     if (!res.ok) {
       throw new ApiError(res.status, `${res.status} ${res.statusText}`);
     }
@@ -278,10 +288,10 @@ export type MyJobsFilter = 'all' | 'viewed' | 'saved' | 'applied';
 export type Api = ReturnType<typeof createApi>;
 export const api = createApi();
 
-// Backward-compatible named exports for the SPA-era views still in the tree
-// (retired with App.svelte/router in task 3.4). They bind to the default browser
-// client; new server `load` code calls createApi(event.fetch) instead. Safe to
-// detach because the methods close over `fetchImpl`, not `this`.
+// Named exports of the default browser client, for ergonomic imports in client
+// components (e.g. `import { recordJobView } from '$lib/api'`). Server `load`
+// code uses `serverApi(event.fetch)` instead. Safe to detach because the methods
+// close over `fetchImpl`, not `this`.
 export const {
   listJobs,
   getJob,

@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import { ArrowRight, Bookmark, Check } from '@lucide/svelte';
   import { markJobApplied, recordJobView, saveJob, unsaveJob } from '$lib/api';
-  import { authStore } from '$lib/auth.svelte';
+  import { isAuthenticated } from '$lib/auth.svelte';
   import { formatSalary, summaryFacets } from '$lib/enrichment';
   import type { Job, UserJob } from '$lib/types';
   import { Badge, Button } from '$lib/ui';
@@ -27,15 +27,15 @@
   const salary = $derived(formatSalary(e));
   const facets = $derived(summaryFacets(job));
 
-  // Record a view for signed-in users once the page hydrates (browser only —
-  // authStore is client-side). Silent history that also tells us whether they
+  // Record a view for signed-in users once the page hydrates (browser only).
+  // Silent history that also tells us whether they
   // already applied; a failed view must not break the page. Re-runs on client
   // navigation to another job, resetting the per-user state first.
   $effect(() => {
     const slug = job.public_slug; // track the current job
     interaction = null;
     showApplyPrompt = false;
-    if (!browser || !authStore.isAuthenticated) return;
+    if (!browser || !isAuthenticated()) return;
     recordJobView(slug)
       .then((rec) => {
         if (job.public_slug === slug) interaction = rec;
@@ -46,7 +46,7 @@
   // The Apply link opens the external posting; once the user has gone to apply,
   // offer the "Did you apply?" choice (only when signed in and not already applied).
   function onApplyClick() {
-    if (authStore.isAuthenticated && !applied) showApplyPrompt = true;
+    if (isAuthenticated() && !applied) showApplyPrompt = true;
   }
 
   async function confirmApplied() {
@@ -107,7 +107,7 @@
             Show <ArrowRight class="size-4" />
           </Button>
         {/if}
-        {#if authStore.isAuthenticated}
+        {#if isAuthenticated()}
           <Button variant="outline" size="sm" onclick={toggleSave} aria-pressed={saved}>
             <Bookmark class={saved ? 'size-4 fill-current' : 'size-4'} />
             {saved ? 'Saved' : 'Save'}

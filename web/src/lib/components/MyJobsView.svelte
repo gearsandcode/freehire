@@ -1,6 +1,6 @@
 <script lang="ts">
   import { listMyJobs, type MyJobsFilter } from '$lib/api';
-  import { authStore } from '$lib/auth.svelte';
+  import { isAuthenticated } from '$lib/auth.svelte';
   import { Paginator } from '$lib/paginated.svelte';
   import type { MyJobCounts } from '$lib/types';
   import { Badge } from '$lib/ui';
@@ -40,7 +40,7 @@
   // confirmed, since the boot-time /me resolution may still be in flight when
   // the page is opened directly.
   $effect(() => {
-    if (authStore.isAuthenticated) void page.start();
+    if (isAuthenticated()) void page.start();
   });
 
   const emptyMessages: Record<MyJobsFilter, string> = {
@@ -52,7 +52,7 @@
   const emptyMessage = $derived(emptyMessages[filter]);
 </script>
 
-{#if !authStore.isAuthenticated}
+{#if !isAuthenticated()}
   <p class="py-12 text-center text-sm text-muted-foreground">
     Sign in to see the jobs you viewed, saved, and applied to.
   </p>

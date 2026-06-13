@@ -44,16 +44,16 @@ pure `filtersFromParams`/`filtersToParams` helpers are reused unchanged in
 
 ## 4. Layout, auth, theme, my/* surfaces
 
-- [ ] 4.1 Root `+layout.svelte` + `+layout.server.ts`: resolve the current user
+- [x] 4.1 Root `+layout.svelte` + `+layout.server.ts`: resolve the current user
   from `/me` (cookie forwarded) so signed-in chrome renders server-side without a
   post-mount flash; client hydrates from layout data; TopBar/footer chrome.
   **Must re-wire `initAuth()`** — it lived in the deleted `main.ts`, so until the
   layout calls it (or the server resolves the user), all per-user interactions
   (Save, Apply prompt, record-view, "You applied") are inert. The server-resolve
   approach supersedes a bare client `initAuth`.
-- [ ] 4.2 Theme: persist the choice in a cookie so SSR sets the `.dark` class on
+- [x] 4.2 Theme: persist the choice in a cookie so SSR sets the `.dark` class on
   `<html>`; keep the system-mode inline fallback in `app.html`; no theme FOUC.
-- [ ] 4.3 Port `/my/jobs` and `/my/api-keys` routes (auth-guarded); retire
+- [x] 4.3 Port `/my/jobs` and `/my/api-keys` routes (auth-guarded); retire
   `App.svelte`, `router.svelte.ts`, and the api.ts compatibility re-exports.
 
 ## 5. SEO artifacts

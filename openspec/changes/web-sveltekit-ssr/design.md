@@ -65,12 +65,20 @@ injected `fetch` so the same client works on server and client.
 
 ### D4 — Auth & theme without FOUC under SSR
 Auth: a root `+layout.server.ts` resolves the current user from `/me` (cookie
-forwarded) so the server renders the correct signed-in/out chrome; the client
-hydrates from that data instead of a post-mount `/me` flicker. Theme: persist the
-theme choice in a **cookie** (in addition to localStorage) so the server can set
-the `.dark` class on `<html>` during SSR; a small inline script in `app.html`
-remains the fallback for system mode. *Why:* SSR must emit correct chrome/theme
-in the first byte or we trade one flash for another.
+forwarded) so the server renders the correct signed-in/out chrome; the user is
+exposed via `page.data.user` (NOT a module-level `$state` singleton, which would
+leak one request's user into another's SSR on a long-lived Node server), and the
+client hydrates from that data instead of a post-mount `/me` flicker.
+`login`/`logout` mutate via the API then `invalidateAll()` to re-resolve.
+Theme: **revised from the cookie approach to a no-FOUC inline script in
+`app.html`** that applies the `.dark` class from localStorage (or the OS for
+`system`) before first paint. *Why the change:* the inline script handles
+`system` mode correctly (the server can't know the OS preference), avoids a theme
+module singleton on the server, and needs no cookie or `handle` hook — simpler
+and still flash-free. `theme.svelte.ts` is made SSR-safe (every browser API
+guarded by `browser`); the toggle defers its stateful icon to `onMount` to avoid
+a hydration mismatch. *Why (auth):* SSR must emit correct chrome in the first
+byte or we trade one flash for another.
 *Alternative considered:* keep auth fully client-side (render signed-out, hydrate)
 — simpler but reintroduces a visible auth flash on every load.
 
