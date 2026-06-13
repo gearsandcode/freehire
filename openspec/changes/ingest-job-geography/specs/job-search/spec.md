@@ -17,11 +17,10 @@ The index SHALL declare:
   filterable attribute (work_mode subsumes it).
 - **sortable attributes**: posted_at, salary_min, salary_max.
 
-Geography and work mode are filtered through the document's **top-level**
-`regions`, `countries`, and `work_mode` fields — the resolved union/precedence of
-the location-derived columns and the enrichment-derived values — not through the
-`enrichment.*` dot paths. There SHALL be no separate
-`enrichment.regions`/`enrichment.countries`/`enrichment.work_mode` facet on the
+Geography is filtered through the document's **top-level** `regions` and
+`countries` fields — the union of the location-parsed columns and the
+enrichment-derived values — not through the `enrichment.regions` dot path. There
+SHALL be no separate `enrichment.regions`/`enrichment.countries` facet on the
 document.
 
 Facets derived from a job's `enrichment` JSONB SHALL be absent (or empty) on the

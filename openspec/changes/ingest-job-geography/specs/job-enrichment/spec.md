@@ -20,11 +20,10 @@ role its office area); the prior restriction to remote roles is removed. There
 SHALL be no separate scope discriminator field: an absent/empty `regions` means
 *unknown*, and `global` is an explicit value (never inferred from the absence of
 other codes), so open-anywhere is distinct from unknown. Validation SHALL check
-each `regions` element against the vocabulary. The enrichment-derived `regions`,
-`countries`, and `work_mode` are an *additive* source: at read time they fold into
-the top-level job geography facet (see the job-geography capability) — geography by
-union, `work_mode` by precedence (the LLM value winning over the ingest one) —
-rather than being served as independent enrichment fields.
+each `regions` element against the vocabulary. The enrichment-derived `regions`
+and `countries` are an *additive* source: at read time they fold into the
+top-level job geography union (see the job-geography capability) rather than being
+served as independent enrichment fields.
 
 #### Scenario: Payload round-trips through the typed contract
 
@@ -67,11 +66,10 @@ The system SHALL include `enrichment`, `enriched_at`, and `enrichment_version` i
 the job objects returned by the jobs read endpoints (`GET /api/v1/jobs`,
 `GET /api/v1/jobs/:id`, and jobs nested under a company). The public job object
 SHALL expose geography as top-level `regions` and `countries` fields (the union of
-the parsed-location columns and the enrichment-derived values) and `work_mode` as
-a top-level field (the LLM value when present, else the ingest-derived one); these
+the parsed-location columns and the enrichment-derived values); these geography
 fields SHALL NOT additionally appear as independent fields under `enrichment`. The
 public job object SHALL NOT include the raw `remote` boolean: the public notion of
-"remote" is expressed solely through the top-level `work_mode` (and the top-level
+"remote" is expressed solely through `enrichment.work_mode` (and the top-level
 geography for area), which subsume it. The `jobs.remote` column itself SHALL be
 retained as an internal enrichment input and SHALL NOT be removed.
 
@@ -86,12 +84,11 @@ retained as an internal enrichment input and SHALL NOT be removed.
 - **WHEN** a job that has not been enriched is returned by a read endpoint
 - **THEN** its `enrichment` is serialized as an empty object (`{}`), not null
 
-#### Scenario: Geography and work mode are served top-level, not duplicated under enrichment
+#### Scenario: Geography is served top-level, not duplicated under enrichment
 
-- **WHEN** a client reads a job whose enrichment contained
-  `regions`/`countries`/`work_mode`
-- **THEN** the returned object carries top-level `regions`/`countries`/`work_mode`
-  and its `enrichment` object does not separately repeat those fields
+- **WHEN** a client reads a job whose enrichment contained `regions`/`countries`
+- **THEN** the returned object carries top-level `regions`/`countries` and its
+  `enrichment` object does not separately repeat those fields
 
 #### Scenario: The raw remote flag is absent from the public job object
 
