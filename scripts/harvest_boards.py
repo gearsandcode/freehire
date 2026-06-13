@@ -23,6 +23,8 @@ import os
 import re
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -267,23 +269,35 @@ def existing_workday() -> set[str]:
     return out
 
 
-def validate_workday(host: str, site: str) -> int | None:
-    """POST the CXS jobs endpoint; return posting count if the board is live."""
+def validate_workday(host: str, site: str, attempts: int = 3) -> int | None:
+    """POST the CXS jobs endpoint; return posting count if the board is live.
+
+    Retries only transient failures (timeouts, 429/5xx): the POST flakes badly
+    under load and a single attempt silently drops live boards. A clean 200 (even
+    with zero jobs) or a 404 is authoritative — no retry.
+    """
     tenant = host.split(".")[0]
     url = f"https://{host}/wday/cxs/{tenant}/{site}/jobs"
     payload = json.dumps({"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": ""}).encode()
-    req = urllib.request.Request(
-        url, data=payload,
-        headers={"User-Agent": UA, "Content-Type": "application/json", "Accept": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            data = json.loads(r.read())
-    except Exception:
-        return None
-    total = data.get("total") if isinstance(data, dict) else 0
-    total = total or len(data.get("jobPostings", []) if isinstance(data, dict) else [])
-    return total or None
+    for attempt in range(attempts):
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={"User-Agent": UA, "Content-Type": "application/json", "Accept": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                data = json.loads(r.read())
+            total = data.get("total") if isinstance(data, dict) else 0
+            total = total or len(data.get("jobPostings", []) if isinstance(data, dict) else [])
+            return total or None
+        except urllib.error.HTTPError as e:
+            if e.code not in (429, 500, 502, 503, 504):
+                return None  # 404 and other client errors: board is genuinely absent
+        except Exception:
+            pass  # timeout / connection reset: transient, retry
+        if attempt < attempts - 1:
+            time.sleep(1.5 * (attempt + 1))
+    return None
 
 
 def run_workday(write: bool, github: bool) -> int:
