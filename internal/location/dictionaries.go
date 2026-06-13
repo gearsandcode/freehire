@@ -22,6 +22,11 @@ var regionCountries = map[string][]string{
 	"mena":          {"ae", "sa", "il", "eg", "tr", "qa"},
 	"africa":        {"za", "ng", "ke"},
 	"ru":            {"ru"},
+	// CIS / Central Asia — the RU-segment geography of the Telegram sources.
+	// central_asia is the five republics; cis is the rest of the post-Soviet
+	// space (Belarus, Moldova, the Caucasus). ru keeps its own area; ua stays eu.
+	"central_asia": {"uz", "kz", "kg", "tj", "tm"},
+	"cis":          {"by", "md", "am", "az", "ge"},
 }
 
 // countryToRegion is the inverted regionCountries: ISO code -> region code.
@@ -71,6 +76,20 @@ var nameToCountry = map[string]string{
 	"israel": "il", "tel aviv": "il",
 	"united arab emirates": "ae", "dubai": "ae",
 	"south africa": "za",
+	// RU / CIS / Central Asia. "georgia" is deliberately absent — it collides with
+	// the US state; the country resolves via its capital "tbilisi" only.
+	"russia": "ru", "moscow": "ru", "saint petersburg": "ru", "st petersburg": "ru",
+	"kyiv": "ua", "kiev": "ua",
+	"uzbekistan": "uz", "tashkent": "uz", "toshkent": "uz", "samarkand": "uz",
+	"kazakhstan": "kz", "almaty": "kz", "astana": "kz", "nur-sultan": "kz",
+	"kyrgyzstan": "kg", "bishkek": "kg",
+	"tajikistan": "tj", "dushanbe": "tj",
+	"turkmenistan": "tm", "ashgabat": "tm",
+	"belarus": "by", "minsk": "by",
+	"moldova": "md", "chisinau": "md",
+	"armenia": "am", "yerevan": "am",
+	"azerbaijan": "az", "baku": "az",
+	"tbilisi": "ge",
 }
 
 // nameToRegion resolves macro-region names (and explicit open-anywhere markers)
@@ -83,6 +102,7 @@ var nameToRegion = map[string]string{
 	"north america": "north_america",
 	"latam":         "latam", "latin america": "latam", "south america": "latam",
 	"mena": "mena", "middle east": "mena",
-	"africa":   "africa",
+	"africa": "africa",
+	"cis":    "cis", "central asia": "central_asia",
 	"anywhere": "global", "worldwide": "global", "global": "global", "remote anywhere": "global",
 }

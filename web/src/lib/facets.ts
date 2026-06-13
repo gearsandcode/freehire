@@ -61,6 +61,8 @@ const SOURCE: FacetOption[] = [
 const REGION: FacetOption[] = [
   { value: 'global', label: 'Global' },
   { value: 'ru', label: 'Russia' },
+  { value: 'cis', label: 'CIS' },
+  { value: 'central_asia', label: 'Central Asia' },
   { value: 'eu', label: 'Europe' },
   { value: 'us', label: 'USA' },
 ];

@@ -69,11 +69,15 @@ type Enrichment struct {
 // no bundled closed vocabulary here and are not enum-validated in this phase.
 var (
 	WorkModeValues = []string{"remote", "hybrid", "onsite"}
-	// RegionValues is the remote-reach vocabulary: global, macro-regions, and a few
-	// countries treated as reach areas (extend as the curated facet grows).
+	// RegionValues is the geographic-area vocabulary: global, macro-regions, and a
+	// few countries treated as area codes (extend as the curated facet grows).
+	// `cis` (post-Soviet space: Belarus, Moldova, the Caucasus) and `central_asia`
+	// (the five Central Asian republics) cover the RU/CIS segment that dominates
+	// the Telegram sources; `ru` stays its own area.
 	RegionValues = []string{
 		"global", "eu", "emea", "eea", "uk", "americas",
 		"north_america", "latam", "apac", "mena", "africa", "us", "ru",
+		"cis", "central_asia",
 	}
 	EmploymentTypeValues = []string{"full_time", "part_time", "contract", "internship"}
 	RelocationValues     = []string{"not_supported", "supported", "required"}

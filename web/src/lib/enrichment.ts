@@ -49,6 +49,8 @@ const REGION: Record<string, string> = {
   africa: 'Africa',
   us: 'USA',
   ru: 'Russia',
+  cis: 'CIS',
+  central_asia: 'Central Asia',
 };
 
 const RELOCATION: Record<string, string> = {

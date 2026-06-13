@@ -70,6 +70,26 @@ func TestParse(t *testing.T) {
 			want:     Geo{Countries: []string{"us"}, Regions: []string{"us"}, WorkMode: "remote"},
 		},
 		{
+			name:     "Central Asia: Uzbek district, city, country (Uzbek spelling)",
+			location: "Yunusobod, Toshkent, Uzbekistan",
+			want:     Geo{Countries: []string{"uz"}, Regions: []string{"central_asia"}},
+		},
+		{
+			name:     "Central Asia: remote Kazakhstan",
+			location: "Remote - Kazakhstan",
+			want:     Geo{Countries: []string{"kz"}, Regions: []string{"central_asia"}, WorkMode: "remote"},
+		},
+		{
+			name:     "CIS: Baku via city and country",
+			location: "Baku, Azerbaijan",
+			want:     Geo{Countries: []string{"az"}, Regions: []string{"cis"}},
+		},
+		{
+			name:     "country-only Georgia is the US state, not the country (no false ge)",
+			location: "Atlanta, Georgia, United States",
+			want:     Geo{Countries: []string{"us"}, Regions: []string{"us"}},
+		},
+		{
 			name:     "empty location",
 			location: "",
 			want:     Geo{},
