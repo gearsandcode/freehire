@@ -25,15 +25,18 @@ without any persisted page content.
 - **WHEN** the liveness worker runs and an orphan job already has `closed_at` set
 - **THEN** that job is not selected for probing
 
-### Requirement: A probe is classified expired only on a definitive death signal
+### Requirement: A probe is classified into one of three verdicts
 
-The classifier SHALL return `expired` only when the fetch yields a definitive signal
-that the posting is gone: an HTTP `404` or `410`; a final URL matching an
-error/listing redirect pattern; a response body matching a curated hard-expired
-pattern; or body content below a minimum length threshold. Any other outcome —
-including `5xx`, `403`, a network or timeout error, healthy content, or a
-client-rendered shell with no server-side closed message — SHALL be classified as
-not-expired and SHALL trigger no state change.
+The classifier SHALL return one of three verdicts so the worker can act differently on
+"alive" than on "could not tell":
+
+- `expired` — a definitive death signal: an HTTP `404` or `410`; a final URL matching
+  an error/listing redirect pattern; a body matching a curated hard-expired pattern; or
+  body content below a minimum length threshold. Only this verdict advances a job toward
+  closing.
+- `live` — a healthy `2xx` posting with no death signal. This verdict clears strikes.
+- `uncertain` — any non-`2xx` that is not a definitive gone (`5xx`, `403`), or a network
+  or timeout error. This verdict triggers no state change at all.
 
 #### Scenario: HTTP gone is expired
 
@@ -51,25 +54,27 @@ not-expired and SHALL trigger no state change.
 - **WHEN** a probe returns body content shorter than the minimum content threshold
 - **THEN** the probe is classified `expired`
 
-#### Scenario: Transient failure is not expired
-
-- **WHEN** a probe returns HTTP 503, 403, or fails with a timeout
-- **THEN** the probe is classified not-expired and no state change is made
-
-#### Scenario: Healthy page is not expired
+#### Scenario: Healthy page is live
 
 - **WHEN** a probe returns HTTP 200 with substantial content and no hard-expired
   signal
-- **THEN** the probe is classified not-expired and no state change is made
+- **THEN** the probe is classified `live`
+
+#### Scenario: Transient failure is uncertain
+
+- **WHEN** a probe returns HTTP 503 or 403, or fails with a timeout
+- **THEN** the probe is classified `uncertain` and the job's strike count is left
+  unchanged
 
 ### Requirement: An orphan job is closed only after two consecutive expired probes
 
 The system SHALL track consecutive `expired` probes per job in
 `jobs.liveness_strikes`. An `expired` probe SHALL increment the counter, and on
-reaching two SHALL set `closed_at` within the same write. Any not-expired probe
-SHALL reset the counter to zero, so two non-consecutive expired reads never close a
-job. This grace absorbs a transient death signal and biases toward leaving an orphan
-job open rather than closing it irreversibly.
+reaching two SHALL set `closed_at` within the same write. A `live` probe SHALL reset
+the counter to zero, so only consecutive expired reads close a job. An `uncertain`
+probe SHALL leave the counter unchanged — a probe that could not reach or judge the
+page is neither evidence of death nor of life. This grace absorbs a transient signal
+and biases toward leaving an orphan job open rather than closing it irreversibly.
 
 #### Scenario: First expired probe stamps a strike but does not close
 
@@ -82,7 +87,13 @@ job open rather than closing it irreversibly.
 - **THEN** `liveness_strikes` becomes 2 and `closed_at` is set, and the job stops
   appearing in list and search surfaces
 
-#### Scenario: A healthy probe resets the strike count
+#### Scenario: A live probe resets the strike count
 
-- **WHEN** an open orphan job with `liveness_strikes = 1` is probed not-expired
+- **WHEN** an open orphan job with `liveness_strikes = 1` is probed `live`
 - **THEN** `liveness_strikes` is reset to 0 and the job remains open
+
+#### Scenario: An uncertain probe preserves the strike count
+
+- **WHEN** an open orphan job with `liveness_strikes = 1` is probed `uncertain`
+  (a transient failure)
+- **THEN** `liveness_strikes` is left at 1 and the job remains open

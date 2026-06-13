@@ -50,13 +50,21 @@ liveness`) returns `expired` on any definitive death signal:
   applications", "position has been filled");
 - body content length below a small threshold (a nav/footer-only shell).
 
-Everything else — `5xx`, `403`, network/timeout error, healthy content, or a JS-only
-SPA shell whose closed message never renders server-side — is **not-expired** and
-takes no action. Without a headless browser we lose the "visible Apply control" signal
-and under-detect JS-only closures; that is an accepted trade-off that fails safe
-(miss a dead job, never kill a live one). For the close decision, active vs uncertain
-need not be distinguished — only "definitively dead" vs "everything else" — so the
-classifier is effectively binary at the action boundary.
+The classifier returns three verdicts, because the worker must act differently on
+"alive" than on "could not tell":
+
+- `expired` — the death signals above; advances the strike counter.
+- `live` — a healthy `2xx` with no death signal; clears the strike counter.
+- `uncertain` — a non-`2xx` that is not a definitive gone (`5xx`, `403`) or a
+  network/timeout error; takes **no action**, leaving the strike count untouched.
+
+The `live`/`uncertain` split matters: a transient `503` is not proof the posting is
+alive, so it must not reset a strike already earned from a real `404` on the previous
+run (otherwise a flaky host could keep a dead job open forever). A fetch error surfaces
+as status `0`, which maps to `uncertain` — so the worker needs no special-case branch
+for transport failures. Without a headless browser we lose the "visible Apply control"
+signal and under-detect JS-only closures; that is an accepted trade-off that fails safe
+(miss a dead job, never kill a live one).
 
 ### Two-strike grace via a counter column
 
