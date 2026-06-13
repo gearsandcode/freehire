@@ -43,15 +43,13 @@
     if (authStore.isAuthenticated) void page.start();
   });
 
-  const emptyMessage = $derived(
-    filter === 'viewed'
-      ? 'Nothing here: every job you viewed is already saved or applied to.'
-      : filter === 'saved'
-        ? 'No saved jobs yet. Save a job to find it here.'
-        : filter === 'applied'
-          ? 'No applications yet. Confirm "Did you apply?" on a job to track it here.'
-          : 'No activity yet. Jobs you open, save, or apply to will show up here.',
-  );
+  const emptyMessages: Record<MyJobsFilter, string> = {
+    all: 'No activity yet. Jobs you open, save, or apply to will show up here.',
+    viewed: 'Nothing here: every job you viewed is already saved or applied to.',
+    saved: 'No saved jobs yet. Save a job to find it here.',
+    applied: 'No applications yet. Confirm "Did you apply?" on a job to track it here.',
+  };
+  const emptyMessage = $derived(emptyMessages[filter]);
 </script>
 
 {#if !authStore.isAuthenticated}
