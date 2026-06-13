@@ -153,9 +153,17 @@ def attribute_names(text: str) -> dict[str, str]:
 
 
 def harvest_github(per_provider_pages: int = 3) -> set[tuple[str, str]]:
-    """Sweep GitHub code search for the three ATS host patterns (needs gh)."""
+    """Sweep GitHub code search for the ATS host patterns (needs gh).
+
+    Code search is capped at 10 req/min, so the host list is ordered with the
+    rarer providers first — if the quota runs out, the well-covered greenhouse/
+    lever/ashby hosts are the ones that get truncated, not the long-tail ones.
+    """
     out: set[tuple[str, str]] = set()
-    queries = ["job-boards.greenhouse.io", "jobs.lever.co", "jobs.ashbyhq.com"]
+    queries = [
+        "jobs.smartrecruiters.com", "apply.workable.com", "recruitee.com",
+        "job-boards.greenhouse.io", "jobs.lever.co", "jobs.ashbyhq.com",
+    ]
     for q in queries:
         for page in range(1, per_provider_pages + 1):
             try:
