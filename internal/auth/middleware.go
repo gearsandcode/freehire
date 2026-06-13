@@ -74,7 +74,9 @@ func bearerToken(c *fiber.Ctx) string {
 	const prefix = "Bearer "
 	h := c.Get(fiber.HeaderAuthorization)
 	if len(h) > len(prefix) && strings.EqualFold(h[:len(prefix)], prefix) {
-		return h[len(prefix):]
+		// A Bearer credential carries no internal whitespace; trim any the client
+		// or a proxy added around it so a valid key is not silently mismatched.
+		return strings.TrimSpace(h[len(prefix):])
 	}
 	return ""
 }

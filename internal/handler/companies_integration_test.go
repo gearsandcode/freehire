@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http/httptest"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -27,20 +28,18 @@ func startPostgres(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx := context.Background()
 
-	var scripts []string
-	for _, f := range []string{
-		"0001_init.sql", "0002_companies.sql",
-		"0003_job_enrichment.sql", "0004_enrichment_outbox.sql",
-		"0005_users.sql", "0006_user_jobs.sql",
-		"0007_job_public_slug.sql", "0008_job_lifecycle.sql",
-		"0010_user_identities.sql", "0011_user_jobs_saved.sql",
-	} {
-		abs, err := filepath.Abs(filepath.Join("..", "..", "migrations", f))
-		if err != nil {
-			t.Fatalf("resolve migration path: %v", err)
-		}
-		scripts = append(scripts, abs)
+	// Apply every migration, in name order — the same way Postgres initdb runs the
+	// mounted migrations/ dir — so a new migration is never silently missing from
+	// the test schema (this helper previously hardcoded a list and drifted).
+	migrationsDir, err := filepath.Abs(filepath.Join("..", "..", "migrations"))
+	if err != nil {
+		t.Fatalf("resolve migrations dir: %v", err)
 	}
+	scripts, err := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
+	if err != nil || len(scripts) == 0 {
+		t.Fatalf("list migrations: %v (found %d)", err, len(scripts))
+	}
+	sort.Strings(scripts)
 
 	pg, err := postgres.Run(ctx, "postgres:16-alpine",
 		postgres.WithDatabase("hire"),

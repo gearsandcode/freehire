@@ -93,18 +93,27 @@ func Register(app *fiber.App, pool *pgxpool.Pool, frontendOrigin, jwtSecret stri
 	api.Get("/companies", h.ListCompanies)
 	api.Get("/companies/:slug", h.GetCompany)
 
-	// Per-user job interactions: recording a view, marking applied, and saving
-	// all require a session. The public job reads above stay unauthenticated.
-	// Jobs are addressed by their public slug; the handlers resolve it to the
-	// internal id before writing user_jobs.
-	api.Post("/jobs/:slug/view", auth.RequireAuth(h.issuer), h.RecordView)
-	api.Post("/jobs/:slug/apply", auth.RequireAuth(h.issuer), h.MarkApplied)
-	api.Post("/jobs/:slug/save", auth.RequireAuth(h.issuer), h.SaveJob)
-	api.Delete("/jobs/:slug/save", auth.RequireAuth(h.issuer), h.UnsaveJob)
+	// Per-user job interactions and the user-scoped reads accept either the
+	// session cookie or an API key (RequireAuthOrKey), so a script holding a key
+	// can drive the same flow as the browser. The public job reads above stay
+	// unauthenticated. Jobs are addressed by their public slug; the handlers
+	// resolve it to the internal id before writing user_jobs.
+	keyAuth := auth.RequireAuthOrKey(h.issuer, h.queries)
+	api.Post("/jobs/:slug/view", keyAuth, h.RecordView)
+	api.Post("/jobs/:slug/apply", keyAuth, h.MarkApplied)
+	api.Post("/jobs/:slug/save", keyAuth, h.SaveJob)
+	api.Delete("/jobs/:slug/save", keyAuth, h.UnsaveJob)
 
 	// User-scoped reads live under /me (consistent with /auth/me): the my-jobs
 	// listing joins the caller's interactions with the jobs they touch.
-	api.Get("/me/jobs", auth.RequireAuth(h.issuer), h.ListMyJobs)
+	api.Get("/me/jobs", keyAuth, h.ListMyJobs)
+
+	// API-key management is cookie-only (RequireAuth): a leaked key must not be
+	// able to create, list, or revoke keys. The create endpoint returns the
+	// plaintext token exactly once.
+	api.Post("/me/api-keys", auth.RequireAuth(h.issuer), h.CreateAPIKey)
+	api.Get("/me/api-keys", auth.RequireAuth(h.issuer), h.ListAPIKeys)
+	api.Delete("/me/api-keys/:id", auth.RequireAuth(h.issuer), h.RevokeAPIKey)
 
 	// Auth: register/login/logout are public (logout just clears the cookie);
 	// me is guarded by the auth-cookie check.

@@ -12,16 +12,16 @@
 
 ## 3. HTTP: key-management handlers & route wiring (internal/handler)
 
-- [ ] 3.1 Add `api_keys.go` `CreateAPIKey` handler: `POST /api/v1/me/api-keys` parses `{name, expires_at?}`, calls `auth.GenerateAPIKey`, persists via `CreateAPIKey`, and returns `201 {"data": {id, name, token_prefix, created_at, expires_at, token}}` with the plaintext `token` included exactly once.
-- [ ] 3.2 Add `ListAPIKeys` handler: `GET /api/v1/me/api-keys` returns `{"data": [...]}` of the caller's keys (metadata only — never `token`/`token_hash`).
-- [ ] 3.3 Add `RevokeAPIKey` handler: `DELETE /api/v1/me/api-keys/:id` deletes the caller's key; 0 rows affected → `404`; success → `204`.
-- [ ] 3.4 Wire routes in `Register`: mount the three `/me/api-keys` routes behind `auth.RequireAuth(h.issuer)` (cookie-only); replace `auth.RequireAuth(h.issuer)` with `auth.RequireAuthOrKey(h.issuer, h.queries)` on the five per-user endpoints (`POST /jobs/:slug/view`, `/apply`, `/save`, `DELETE /jobs/:slug/save`, `GET /me/jobs`).
-- [ ] 3.5 Handler tests: create returns the token once and `201`; list omits the secret; delete is owner-scoped (another user's id → `404`); the `/me/api-keys` endpoints reject a `Bearer` key with `401` (cookie-only); a per-user endpoint (e.g. apply) authenticates via a valid `Bearer` key.
+- [x] 3.1 Add `api_keys.go` `CreateAPIKey` handler: `POST /api/v1/me/api-keys` parses `{name, expires_at?}`, calls `auth.GenerateAPIKey`, persists via `CreateAPIKey`, and returns `201 {"data": {id, name, token_prefix, created_at, expires_at, token}}` with the plaintext `token` included exactly once.
+- [x] 3.2 Add `ListAPIKeys` handler: `GET /api/v1/me/api-keys` returns `{"data": [...]}` of the caller's keys (metadata only — never `token`/`token_hash`).
+- [x] 3.3 Add `RevokeAPIKey` handler: `DELETE /api/v1/me/api-keys/:id` deletes the caller's key; 0 rows affected → `404`; success → `204`.
+- [x] 3.4 Wire routes in `Register`: mount the three `/me/api-keys` routes behind `auth.RequireAuth(h.issuer)` (cookie-only); replace `auth.RequireAuth(h.issuer)` with `auth.RequireAuthOrKey(h.issuer, h.queries)` on the five per-user endpoints (`POST /jobs/:slug/view`, `/apply`, `/save`, `DELETE /jobs/:slug/save`, `GET /me/jobs`).
+- [x] 3.5 Handler tests: create returns the token once and `201`; list omits the secret; delete is owner-scoped (another user's id → `404`); the `/me/api-keys` endpoints reject a `Bearer` key with `401` (cookie-only); a per-user endpoint (e.g. apply) authenticates via a valid `Bearer` key.
 
 ## 4. DB integration tests (testcontainers)
 
-- [ ] 4.1 `AuthenticateAPIKey` integration test (same pattern as the enrichment_outbox queue tests): a valid key returns its `user_id` and bumps `last_used_at`; an expired key returns no row; a revoked/unknown hash returns no row.
-- [ ] 4.2 `DeleteAPIKey` ownership integration test: deleting reports 1 row only for the owner; another user's id reports 0 rows and leaves the key intact.
+- [x] 4.1 `AuthenticateAPIKey` integration test (same pattern as the enrichment_outbox queue tests): a valid key returns its `user_id` and bumps `last_used_at`; an expired key returns no row; a revoked/unknown hash returns no row.
+- [x] 4.2 `DeleteAPIKey` ownership integration test: deleting reports 1 row only for the owner; another user's id reports 0 rows and leaves the key intact.
 
 ## 5. SPA: API-keys management UI (web/)
 
