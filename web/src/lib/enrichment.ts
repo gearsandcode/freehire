@@ -216,14 +216,15 @@ export function summaryFacets(job: Job): Facet[] {
   const e = job.enrichment ?? {};
   const facets: Facet[] = [];
 
-  // A scalar facet that maps to a search filter: one clickable value.
+  // A scalar facet that maps to a search filter: one clickable value, its text
+  // resolved from the code via the facet's label map.
   const link = (
     name: string,
     param: string,
     code: string | null | undefined,
-    text: string | null | undefined,
+    map: Record<string, string>,
   ) => {
-    if (code && text) facets.push({ label: name, values: [{ text, href: filterHref(param, code) }] });
+    if (code) facets.push({ label: name, values: [{ text: label(map, code), href: filterHref(param, code) }] });
   };
   // An array facet (region/country/industry): one clickable value per code.
   const links = (
@@ -241,25 +242,22 @@ export function summaryFacets(job: Job): Facet[] {
     if (text) facets.push({ label: name, values: [{ text }] });
   };
 
-  link('Work format', 'work_mode', job.work_mode, job.work_mode && label(WORK_MODE, job.work_mode));
+  link('Work format', 'work_mode', job.work_mode, WORK_MODE);
   plain('Location', job.location);
   links('Region', 'regions', job.regions, (r) => label(REGION, r));
-  link('Work type', 'employment_type', e.employment_type, e.employment_type && label(EMPLOYMENT, e.employment_type));
-  link('Grade', 'seniority', e.seniority, e.seniority && label(SENIORITY, e.seniority));
+  link('Work type', 'employment_type', e.employment_type, EMPLOYMENT);
+  link('Grade', 'seniority', e.seniority, SENIORITY);
   plain('Experience', e.experience_years_min != null ? `${e.experience_years_min}+ yrs` : null);
-  link(
-    'English',
-    'english_level',
-    e.english_level && e.english_level !== 'none' ? e.english_level : null,
-    e.english_level && e.english_level !== 'none' ? label(ENGLISH_LEVEL, e.english_level) : null,
-  );
-  link('Category', 'category', e.category, e.category && label(CATEGORY, e.category));
+  // english_level carries a 'none' sentinel that must not render as a facet.
+  const english = e.english_level && e.english_level !== 'none' ? e.english_level : null;
+  link('English', 'english_level', english, ENGLISH_LEVEL);
+  link('Category', 'category', e.category, CATEGORY);
   links('Country', 'countries', job.countries, (c) => c.toUpperCase());
-  link('Relocation', 'relocation', e.relocation, e.relocation && label(RELOCATION, e.relocation));
+  link('Relocation', 'relocation', e.relocation, RELOCATION);
   if (e.visa_sponsorship === true) {
     facets.push({ label: 'Visa', values: [{ text: 'Sponsored', href: filterHref('visa_sponsorship', 'true') }] });
   }
-  link('Company', 'company_type', e.company_type, e.company_type && label(COMPANY_TYPE, e.company_type));
+  link('Company', 'company_type', e.company_type, COMPANY_TYPE);
   plain('Size', e.company_size);
   links('Domains', 'domains', e.domains, (d) => label(DOMAINS, d));
 
