@@ -16,10 +16,13 @@ func TestFindMatchesAdapterByLinkHost(t *testing.T) {
 		{"https://career.habr.com/vacancies/1000166712", "habr_career"},
 		{"https://remoteyeah.com/jobs/remote-senior-quality-engineer-peek", "remoteyeah"},
 		{"https://geekjob.ru/vacancy/6a1ebb8520ad023342091661", "geekjob"},
-		{"https://geekjob.ru/", ""},            // homepage, not a /vacancy/<id> link
-		{"https://remoteyeah.com/", ""},        // homepage, not a /jobs/<slug> link
-		{"https://example.com/jobs/x", ""},     // unknown domain
-		{"https://t.me/habr_career/75410", ""}, // the post itself, not an outbound link
+		{"https://job-boards.greenhouse.io/alpaca/jobs/5745893004", "greenhouse"},
+		{"https://boards.eu.greenhouse.io/acme/jobs/123", "greenhouse"},
+		{"https://job-boards.greenhouse.io/alpaca", ""}, // board page, not a /jobs/<id> link
+		{"https://geekjob.ru/", ""},                     // homepage, not a /vacancy/<id> link
+		{"https://remoteyeah.com/", ""},                 // homepage, not a /jobs/<slug> link
+		{"https://example.com/jobs/x", ""},              // unknown domain
+		{"https://t.me/habr_career/75410", ""},          // the post itself, not an outbound link
 	}
 
 	for _, c := range cases {
