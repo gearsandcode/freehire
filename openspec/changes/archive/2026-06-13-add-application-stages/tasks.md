@@ -27,7 +27,7 @@
 
 ## 5. Verification & rollout
 
-- [ ] 5.1 `go build ./... && go vet ./... && go test ./...` green; `go test -tags=integration ./internal/db/ ./internal/handler/` passes with Docker.
-- [ ] 5.2 End-to-end by hand: `curl -X PATCH -H "Authorization: Bearer fhk_…" -d '{"stage":"interview"}' …/jobs/<slug>/track` sets the stage; set notes; confirm both appear in `GET /me/jobs`; exercise the My Jobs UI.
-- [ ] 5.3 Record the prod migration step (apply `0014_application_stage.sql` via psql per the ops runbook) in the PR; deploy app + web.
+- [x] 5.1 `go build ./... && go vet ./... && go test ./...` green; `go test -tags=integration ./internal/db/ ./internal/handler/` passes with Docker.
+- [x] 5.2 End-to-end by hand: `curl -X PATCH -H "Authorization: Bearer fhk_…" -d '{"stage":"interview"}' …/jobs/<slug>/track` sets the stage; set notes; confirm both appear in `GET /me/jobs`; exercise the My Jobs UI. _Verified on prod (freehire.dev) with a real key: track→200 with stage+notes, /me/jobs row carries both._
+- [x] 5.3 Record the prod migration step (apply `0014_application_stage.sql` via psql per the ops runbook) in the PR; deploy app + web. _0014 applied via psql (additive, idempotent); app+web deployed from clean origin/main._
 - [ ] 5.4 Follow-up (separate `freehire-cli` repo, not this change): add `freehire stage <slug> <stage>` and `freehire note <slug> <text>` (→ PATCH track) and show stage/notes in `my`.
