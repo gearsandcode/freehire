@@ -12,6 +12,8 @@ import type {
   MyJobCounts,
   User,
   UserJob,
+  ApiKey,
+  CreatedApiKey,
 } from './types';
 
 // Relative base: the SPA and API share one origin (a dev Vite proxy forwards
@@ -210,4 +212,32 @@ export async function listMyJobs(
     `/api/v1/me/jobs${query(limit, offset)}&filter=${filter}`,
   );
   return { ...toSlice(res, offset), counts: res.meta.counts };
+}
+
+// --- API keys ---------------------------------------------------------------
+//
+// Personal API keys for non-browser access. Management is cookie-only (these
+// calls ride the session cookie); the plaintext token is returned once, by
+// createApiKey, and never again.
+
+/** The current user's API keys (metadata only — no secret). */
+export async function listApiKeys(): Promise<ApiKey[]> {
+  const res = await request<{ data: ApiKey[] }>('/api/v1/me/api-keys');
+  return res.data;
+}
+
+/** Create a key and return it with its one-time plaintext `token`. `expiresAt` is
+ *  an RFC3339 string, or omitted for a key that never expires. */
+export async function createApiKey(name: string, expiresAt?: string): Promise<CreatedApiKey> {
+  const res = await request<{ data: CreatedApiKey }>('/api/v1/me/api-keys', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, expires_at: expiresAt ?? null }),
+  });
+  return res.data;
+}
+
+/** Revoke a key by id; it stops authenticating immediately. */
+export async function revokeApiKey(id: number): Promise<void> {
+  await call(`/api/v1/me/api-keys/${id}`, { method: 'DELETE' });
 }

@@ -7,6 +7,7 @@
   import CompaniesView from '$lib/components/CompaniesView.svelte';
   import CompanyView from '$lib/components/CompanyView.svelte';
   import MyJobsView from '$lib/components/MyJobsView.svelte';
+  import ApiKeysView from '$lib/components/ApiKeysView.svelte';
 
   const route = $derived(router.route);
 
@@ -57,6 +58,8 @@
           <CompanyView slug={route.slug} />
         {:else if route.name === 'myjobs'}
           <MyJobsView />
+        {:else if route.name === 'apikeys'}
+          <ApiKeysView />
         {:else}
           <p class="py-12 text-center text-sm text-muted-foreground">Page not found.</p>
         {/if}

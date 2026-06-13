@@ -9,6 +9,7 @@ export type Route =
   | { name: 'companies' }
   | { name: 'company'; slug: string }
   | { name: 'myjobs' }
+  | { name: 'apikeys' }
   | { name: 'notfound' };
 
 function parse(path: string): Route {
@@ -16,6 +17,7 @@ function parse(path: string): Route {
   if (path === '/jobs') return { name: 'jobs' };
   if (path === '/companies') return { name: 'companies' };
   if (path === '/my/jobs') return { name: 'myjobs' };
+  if (path === '/my/api-keys') return { name: 'apikeys' };
 
   const jobSlug = path.match(/^\/jobs\/(.+)$/)?.[1];
   if (jobSlug) return { name: 'job', slug: decodeURIComponent(jobSlug) };

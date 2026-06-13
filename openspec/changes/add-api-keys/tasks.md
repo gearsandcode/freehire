@@ -25,11 +25,11 @@
 
 ## 5. SPA: API-keys management UI (web/)
 
-- [ ] 5.1 `lib/api.ts`: add `listApiKeys`, `createApiKey`, `revokeApiKey` plus the `ApiKey` / created-key types (mirrors the existing typed-function style; never logs the secret).
-- [ ] 5.2 Add a `{ name: 'apikeys' }` route for `/my/api-keys` in `router.svelte.ts` and render `ApiKeysView` from `App.svelte`.
-- [ ] 5.3 `ApiKeysView.svelte`: list keys (name, `fhk_…` prefix, created, last used / "never", expires) with loading/empty/error states; a "Create key" form (name + optional expiry); a one-time secret panel after creation (full token, Copy control, `curl -H "Authorization: Bearer fhk_…"` example, "won't be shown again" notice); a Revoke action with confirmation.
-- [ ] 5.4 Add an "API keys" item to `UserMenu.svelte` between "My jobs" and "Log out", closing the menu on click.
-- [ ] 5.5 Verify the SPA: `npm run check` (svelte-check) + lint pass; exercise the page in the running app. Do not add a unit test runner.
+- [x] 5.1 `lib/api.ts`: add `listApiKeys`, `createApiKey`, `revokeApiKey` plus the `ApiKey` / created-key types (mirrors the existing typed-function style; never logs the secret).
+- [x] 5.2 Add a `{ name: 'apikeys' }` route for `/my/api-keys` in `router.svelte.ts` and render `ApiKeysView` from `App.svelte`.
+- [x] 5.3 `ApiKeysView.svelte`: list keys (name, `fhk_…` prefix, created, last used / "never", expires) with loading/empty/error states; a "Create key" form (name + optional expiry); a one-time secret panel after creation (full token, Copy control, `curl -H "Authorization: Bearer fhk_…"` example, "won't be shown again" notice); a Revoke action with confirmation.
+- [x] 5.4 Add an "API keys" item to `UserMenu.svelte` between "My jobs" and "Log out", closing the menu on click.
+- [x] 5.5 Verify the SPA: `npm run check` (svelte-check) + lint pass; exercise the page in the running app. Do not add a unit test runner. _svelte-check: 0 errors/0 warnings. Changed files lint-clean & add no new lint issues. Two PRE-EXISTING lint findings remain on `main` outside this change (JobsView.svelte:35 `no-unused-expressions` from the home-page commit; SearchSelect.svelte `no-array-sort` warning) — flagged separately, not fixed here to keep the change surgical._
 
 ## 6. Verification & rollout
 
