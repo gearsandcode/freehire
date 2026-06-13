@@ -15,6 +15,15 @@ type Post struct {
 	MsgID    int64
 	PostedAt time.Time
 	Text     string
+	// Links are the message's outbound hyperlinks (anchor text + href), preserved so the
+	// extraction step can follow them; nodeText keeps Text itself clean of raw URLs.
+	Links []Link
+}
+
+// Link is one hyperlink found in a message: its visible anchor text and its href.
+type Link struct {
+	Text string `json:"text"`
+	URL  string `json:"url"`
 }
 
 // ParsePreview extracts the posts from a t.me/s/<channel> preview page. The page
@@ -74,6 +83,7 @@ func postID(n *html.Node, prefix string) (int64, bool) {
 func parseMessage(n *html.Node, id int64) (Post, bool) {
 	var postedAt time.Time
 	var text string
+	var links []Link
 
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
@@ -87,6 +97,7 @@ func parseMessage(n *html.Node, id int64) (Post, bool) {
 				}
 			case hasClass(n, "tgme_widget_message_text"):
 				text = nodeText(n)
+				links = messageLinks(n)
 				return
 			}
 		}
@@ -100,7 +111,27 @@ func parseMessage(n *html.Node, id int64) (Post, bool) {
 	if postedAt.IsZero() || text == "" {
 		return Post{}, false
 	}
-	return Post{MsgID: id, PostedAt: postedAt, Text: text}, true
+	return Post{MsgID: id, PostedAt: postedAt, Text: text, Links: links}, true
+}
+
+// messageLinks collects the message's anchors as {text, href} in document order. A blank
+// href is skipped; the anchor text is flattened the same way as the body so it reads
+// cleanly. The hrefs are dropped from nodeText, so this is the only place they survive.
+func messageLinks(n *html.Node) []Link {
+	var links []Link
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			if href := attr(n, "href"); href != "" {
+				links = append(links, Link{Text: strings.TrimSpace(nodeText(n)), URL: href})
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(n)
+	return links
 }
 
 // nodeText flattens a node to plain text: entities are already decoded by the

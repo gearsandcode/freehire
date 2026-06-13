@@ -3,8 +3,8 @@
 -- re-crawling idempotent — a stored post (pending, done, or dead-lettered) is
 -- never reset. extracted_at is non-NULL when the ingest prefilter already
 -- decided the post holds no vacancy, so it is recorded but never queued.
-INSERT INTO telegram_posts (channel, msg_id, text, posted_at, extracted_at)
-VALUES (sqlc.arg(channel), sqlc.arg(msg_id), sqlc.arg(text), sqlc.arg(posted_at), sqlc.arg(extracted_at))
+INSERT INTO telegram_posts (channel, msg_id, text, links, posted_at, extracted_at)
+VALUES (sqlc.arg(channel), sqlc.arg(msg_id), sqlc.arg(text), sqlc.arg(links), sqlc.arg(posted_at), sqlc.arg(extracted_at))
 ON CONFLICT (channel, msg_id) DO NOTHING;
 
 -- name: ClaimTelegramPosts :many
@@ -27,7 +27,7 @@ UPDATE telegram_posts p
 SET claimed_at = now()
 FROM claimable c
 WHERE p.channel = c.channel AND p.msg_id = c.msg_id
-RETURNING p.channel, p.msg_id, p.text, p.posted_at;
+RETURNING p.channel, p.msg_id, p.text, p.links, p.posted_at;
 
 -- name: MarkTelegramPostExtracted :exec
 -- Completion: the post was processed (jobs written, or no vacancy found). Run in

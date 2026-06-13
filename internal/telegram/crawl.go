@@ -18,6 +18,13 @@ type PostStore interface {
 	Insert(ctx context.Context, channel string, p Post, done bool) (bool, error)
 }
 
+// LinkMatcher reports whether a post's outbound links include one a destination adapter
+// handles. The crawl keeps such a post even when its teaser text alone does not look like
+// a vacancy, so a link-out digest is not filtered out before the extractor can follow it.
+type LinkMatcher interface {
+	Matches(links []Link) bool
+}
+
 // CrawlStats summarizes one crawl run.
 type CrawlStats struct {
 	Stored   int // new posts queued for extraction
@@ -32,6 +39,7 @@ type CrawlRunner struct {
 	Fetcher PostFetcher
 	Store   PostStore
 	Delay   time.Duration // pause between channels; zero in tests
+	Links   LinkMatcher   // optional; keeps link-out digest posts the text filter would drop
 }
 
 // Run crawls the channels, isolating failures: a channel whose fetch or store
@@ -56,7 +64,7 @@ func (r CrawlRunner) Run(ctx context.Context, channels []ChannelEntry) (CrawlSta
 
 		failed := false
 		for _, p := range posts {
-			isVacancy := LooksLikeVacancy(p.Text)
+			isVacancy := LooksLikeVacancy(p.Text) || r.hasDestinationLink(p.Links)
 			inserted, err := r.Store.Insert(ctx, ch.Channel, p, !isVacancy)
 			if err != nil {
 				log.Printf("telegram: store %s/%d failed: %v", ch.Channel, p.MsgID, err)
@@ -77,4 +85,10 @@ func (r CrawlRunner) Run(ctx context.Context, channels []ChannelEntry) (CrawlSta
 		}
 	}
 	return stats, nil
+}
+
+// hasDestinationLink reports whether a post links out to a vacancy a destination adapter
+// can resolve, returning false when no matcher is configured.
+func (r CrawlRunner) hasDestinationLink(links []Link) bool {
+	return r.Links != nil && r.Links.Matches(links)
 }

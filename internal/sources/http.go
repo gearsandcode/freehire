@@ -61,31 +61,47 @@ func (c *Client) GetJSON(ctx context.Context, url string, v any) error {
 // GetJSONWithHeaders fetches url with extra request headers and decodes its JSON body
 // into v.
 func (c *Client) GetJSONWithHeaders(ctx context.Context, url string, headers map[string]string, v any) error {
-	return c.do(ctx, http.MethodGet, url, nil, "application/json", headers, func(r io.Reader) error {
-		return json.NewDecoder(r).Decode(v)
+	return c.do(ctx, http.MethodGet, url, nil, "application/json", headers, func(resp *http.Response) error {
+		return json.NewDecoder(resp.Body).Decode(v)
 	})
 }
 
 // GetXML fetches url and decodes its XML body into v (used by adapters whose platform
 // publishes an XML feed, e.g. Personio).
 func (c *Client) GetXML(ctx context.Context, url string, v any) error {
-	return c.do(ctx, http.MethodGet, url, nil, "application/xml", nil, func(r io.Reader) error {
-		return xml.NewDecoder(r).Decode(v)
+	return c.do(ctx, http.MethodGet, url, nil, "application/xml", nil, func(resp *http.Response) error {
+		return xml.NewDecoder(resp.Body).Decode(v)
 	})
 }
 
 // GetHTML fetches url and returns its parsed HTML tree.
 func (c *Client) GetHTML(ctx context.Context, url string) (*html.Node, error) {
+	node, _, err := c.getHTML(ctx, url)
+	return node, err
+}
+
+// GetHTMLResolved fetches url, following redirects, and returns its parsed HTML tree
+// together with the final URL after redirects — for shortener-fronted detail pages
+// (e.g. a u.habr.com link that 301s to career.habr.com/vacancies/<id>).
+func (c *Client) GetHTMLResolved(ctx context.Context, url string) (*html.Node, string, error) {
+	return c.getHTML(ctx, url)
+}
+
+// getHTML fetches url and returns its parsed tree plus the final URL after redirects,
+// backing both GetHTML and GetHTMLResolved.
+func (c *Client) getHTML(ctx context.Context, url string) (*html.Node, string, error) {
 	var node *html.Node
-	err := c.do(ctx, http.MethodGet, url, nil, "text/html", nil, func(r io.Reader) error {
-		n, err := html.Parse(r)
+	var final string
+	err := c.do(ctx, http.MethodGet, url, nil, "text/html", nil, func(resp *http.Response) error {
+		final = resp.Request.URL.String()
+		n, err := html.Parse(resp.Body)
 		if err != nil {
 			return err
 		}
 		node = n
 		return nil
 	})
-	return node, err
+	return node, final, err
 }
 
 // PostJSON marshals body to JSON, POSTs it to url, and decodes the JSON response into
@@ -100,8 +116,8 @@ func (c *Client) PostJSONWithHeaders(ctx context.Context, url string, headers ma
 	if err != nil {
 		return fmt.Errorf("sources: marshal request %s: %w", url, err)
 	}
-	return c.do(ctx, http.MethodPost, url, payload, "application/json", headers, func(r io.Reader) error {
-		return json.NewDecoder(r).Decode(v)
+	return c.do(ctx, http.MethodPost, url, payload, "application/json", headers, func(resp *http.Response) error {
+		return json.NewDecoder(resp.Body).Decode(v)
 	})
 }
 
@@ -111,7 +127,7 @@ func (c *Client) PostJSONWithHeaders(ctx context.Context, url string, headers ma
 // the server's Retry-After hint — busy ATS APIs (SmartRecruiters) throttle by IP
 // under the concurrent crawl and recover on a brief wait. Other 4xx are not retried.
 // A non-nil body is re-sent on each attempt.
-func (c *Client) do(ctx context.Context, method, url string, body []byte, accept string, headers map[string]string, decode func(io.Reader) error) error {
+func (c *Client) do(ctx context.Context, method, url string, body []byte, accept string, headers map[string]string, decode func(*http.Response) error) error {
 	var lastErr error
 	delay := c.retryDelay
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
@@ -153,7 +169,7 @@ func (c *Client) do(ctx context.Context, method, url string, body []byte, accept
 
 		switch {
 		case resp.StatusCode >= 200 && resp.StatusCode < 300:
-			err := decode(resp.Body)
+			err := decode(resp)
 			resp.Body.Close()
 			if err != nil {
 				return fmt.Errorf("sources: decode %s: %w", url, err)

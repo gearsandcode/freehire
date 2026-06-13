@@ -13,6 +13,8 @@ import (
 
 	"github.com/strelov1/freehire/internal/config"
 	"github.com/strelov1/freehire/internal/database"
+	"github.com/strelov1/freehire/internal/linksource"
+	"github.com/strelov1/freehire/internal/sources"
 	"github.com/strelov1/freehire/internal/telegram"
 )
 
@@ -57,6 +59,7 @@ func main() {
 		Extractor: extractor,
 		Store:     newExtractStore(pool),
 		Kinds:     kinds,
+		Links:     linkResolver{reg: linksource.All(sources.NewClient())},
 	}
 
 	stats, err := runner.Run(ctx)

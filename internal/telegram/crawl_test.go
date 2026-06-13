@@ -79,6 +79,31 @@ func TestCrawlStoresVacanciesAndFiltersNoise(t *testing.T) {
 	}
 }
 
+type fakeLinkMatcher struct{ match bool }
+
+func (m fakeLinkMatcher) Matches(_ []Link) bool { return m.match }
+
+func TestCrawlKeepsLinkOutDigestDespiteNoisyText(t *testing.T) {
+	// A digest whose teaser text alone reads as noise, but which links out to a vacancy
+	// page, must be queued (not filtered) so the extractor can follow the link.
+	digest := memePost(3)
+	digest.Links = []Link{{Text: "Product manager", URL: "https://u.habr.com/PnBO7"}}
+	f := &fakeFetcher{posts: map[string][]Post{"jobs": {digest}}}
+	store := &fakePostStore{}
+	r := CrawlRunner{Fetcher: f, Store: store, Links: fakeLinkMatcher{match: true}}
+
+	stats, err := r.Run(context.Background(), []ChannelEntry{{Channel: "jobs", Kind: KindBoard}})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if stats.Stored != 1 || stats.Filtered != 0 {
+		t.Errorf("stats = %+v, want Stored=1 Filtered=0 (link-out digest kept)", stats)
+	}
+	if len(store.stored) != 1 || store.stored[0].done {
+		t.Errorf("post stored done=%v, want pending (false)", store.stored)
+	}
+}
+
 func TestCrawlOneFailingChannelDoesNotAbortTheRun(t *testing.T) {
 	f := &fakeFetcher{
 		posts: map[string][]Post{"good": {vacancyPost(1)}},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -48,9 +49,22 @@ func (s *extractStore) Claim(ctx context.Context, leaseSeconds, batchSize int32)
 			MsgID:    r.MsgID,
 			Text:     r.Text,
 			PostedAt: r.PostedAt.Time,
+			Links:    decodeLinks(r.Links),
 		}
 	}
 	return posts, nil
+}
+
+// decodeLinks unmarshals the stored links JSON, tolerating an empty/legacy NULL column.
+func decodeLinks(b []byte) []telegram.Link {
+	if len(b) == 0 {
+		return nil
+	}
+	var links []telegram.Link
+	if err := json.Unmarshal(b, &links); err != nil {
+		return nil
+	}
+	return links
 }
 
 func (s *extractStore) Complete(ctx context.Context, post telegram.PendingPost, jobs []telegram.ExtractedJob) error {
@@ -97,6 +111,64 @@ func (s *extractStore) Complete(ctx context.Context, post telegram.PendingPost, 
 		MsgID:   post.MsgID,
 	}); err != nil {
 		return fmt.Errorf("mark extracted %s: %w", base, err)
+	}
+	return tx.Commit(ctx)
+}
+
+// CompleteLinks writes link-resolved jobs — each under the destination platform's own
+// source identity — through the canonical UpsertJob + enrichment enqueue, and marks the
+// post extracted, all in one transaction. Same shape as Complete; the identity (source,
+// external_id, url) comes from the resolved job rather than the Telegram post.
+func (s *extractStore) CompleteLinks(ctx context.Context, post telegram.PendingPost, jobs []telegram.ResolvedJob) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.q.WithTx(tx)
+
+	for _, j := range jobs {
+		geo := location.Parse(j.Location)
+		workMode := j.WorkMode
+		if workMode == "" {
+			workMode = geo.WorkMode
+		}
+		postedAt := pgtype.Timestamptz{Time: post.PostedAt, Valid: true}
+		if j.PostedAt != nil {
+			postedAt = pgtype.Timestamptz{Time: *j.PostedAt, Valid: true}
+		}
+		saved, err := qtx.UpsertJob(ctx, db.UpsertJobParams{
+			Source:      j.Source,
+			ExternalID:  j.ExternalID,
+			URL:         j.URL,
+			Title:       j.Title,
+			Company:     j.Company,
+			CompanySlug: normalize.Slug(j.Company),
+			PublicSlug:  normalize.JobSlug(j.Title, j.Company, j.Source, j.ExternalID),
+			Location:    j.Location,
+			Remote:      j.Remote,
+			Description: j.Description,
+			PostedAt:    postedAt,
+			Countries:   geo.Countries,
+			Regions:     geo.Regions,
+			WorkMode:    workMode,
+		})
+		if err != nil {
+			return fmt.Errorf("upsert job %s/%s: %w", j.Source, j.ExternalID, err)
+		}
+		if _, err := qtx.EnqueueJobEnrichment(ctx, db.EnqueueJobEnrichmentParams{
+			TargetVersion: int32(enrich.Version),
+			JobID:         saved.ID,
+		}); err != nil {
+			return fmt.Errorf("enqueue enrichment %s/%s: %w", j.Source, j.ExternalID, err)
+		}
+	}
+
+	if err := qtx.MarkTelegramPostExtracted(ctx, db.MarkTelegramPostExtractedParams{
+		Channel: post.Channel,
+		MsgID:   post.MsgID,
+	}); err != nil {
+		return fmt.Errorf("mark extracted %s/%d: %w", post.Channel, post.MsgID, err)
 	}
 	return tx.Commit(ctx)
 }

@@ -12,6 +12,7 @@ type PendingPost struct {
 	MsgID    int64
 	Text     string
 	PostedAt time.Time
+	Links    []Link
 }
 
 // Extractor classifies a post and extracts its vacancies via an LLM. The kind
@@ -21,6 +22,31 @@ type Extractor interface {
 	Extract(ctx context.Context, text string, kind Kind) (Extraction, error)
 }
 
+// ResolvedJob is a fully-identified vacancy parsed by following a post's outbound link to
+// its destination site (e.g. career.habr.com). Unlike an ExtractedJob it carries its own
+// source identity, so it is stored under the destination platform, not "telegram".
+type ResolvedJob struct {
+	Source      string
+	ExternalID  string
+	URL         string
+	Title       string
+	Company     string
+	Location    string
+	Description string
+	Remote      bool
+	PostedAt    *time.Time
+	WorkMode    string
+}
+
+// LinkResolver turns a post's outbound links into fully-identified jobs by fetching and
+// parsing their destination pages. It returns the jobs from every link a destination
+// adapter matched; a non-nil error means matched links existed but all failed (a transient
+// failure worth retrying), while no matched link yields (nil, nil) so the caller falls back
+// to the LLM. Per-link parse skips and failures are the resolver's concern to log.
+type LinkResolver interface {
+	Resolve(ctx context.Context, links []Link) ([]ResolvedJob, error)
+}
+
 // ExtractStore is the persistence boundary of the extraction worker. Complete
 // writes the extracted jobs through the canonical job upsert and marks the post
 // extracted in one transaction; Fail counts a failed attempt (dead-lettering at
@@ -28,6 +54,9 @@ type Extractor interface {
 type ExtractStore interface {
 	Claim(ctx context.Context, leaseSeconds, batchSize int32) ([]PendingPost, error)
 	Complete(ctx context.Context, post PendingPost, jobs []ExtractedJob) error
+	// CompleteLinks writes link-resolved jobs (each under its own source identity) and
+	// marks the post extracted, the same transactional shape as Complete.
+	CompleteLinks(ctx context.Context, post PendingPost, jobs []ResolvedJob) error
 	Fail(ctx context.Context, post PendingPost, errMsg string) error
 }
 
@@ -53,9 +82,12 @@ type ExtractRunner struct {
 	Extractor Extractor
 	Store     ExtractStore
 	Kinds     map[string]Kind // channel → kind, from channels.yml
+	Links     LinkResolver    // optional; resolves outbound job links to full vacancies
 }
 
-// Run processes one claimed batch and returns its stats.
+// Run processes one claimed batch and returns its stats. A post whose links a destination
+// adapter resolves is stored from those (deterministic) jobs and the LLM is skipped; any
+// other post takes the LLM path.
 func (r ExtractRunner) Run(ctx context.Context) (ExtractStats, error) {
 	var stats ExtractStats
 
@@ -65,6 +97,25 @@ func (r ExtractRunner) Run(ctx context.Context) (ExtractStats, error) {
 	}
 
 	for _, post := range posts {
+		linkJobs, err := r.resolveLinks(ctx, post)
+		if err != nil {
+			// Matched links existed but all failed — fail the post so the lease retries it.
+			log.Printf("telegram: resolve links %s/%d failed: %v", post.Channel, post.MsgID, err)
+			stats.Failed++
+			if ferr := r.Store.Fail(ctx, post, err.Error()); ferr != nil {
+				return stats, ferr
+			}
+			continue
+		}
+		if len(linkJobs) > 0 {
+			if err := r.Store.CompleteLinks(ctx, post, linkJobs); err != nil {
+				return stats, err
+			}
+			stats.Processed++
+			stats.Jobs += len(linkJobs)
+			continue
+		}
+
 		extraction, err := r.Extractor.Extract(ctx, post.Text, r.kind(post.Channel))
 		if err == nil {
 			err = extraction.Validate()
@@ -85,6 +136,15 @@ func (r ExtractRunner) Run(ctx context.Context) (ExtractStats, error) {
 		stats.Jobs += len(extraction.Jobs)
 	}
 	return stats, nil
+}
+
+// resolveLinks follows a post's outbound links to full vacancies, returning nil when no
+// resolver is configured or the post has no links.
+func (r ExtractRunner) resolveLinks(ctx context.Context, post PendingPost) ([]ResolvedJob, error) {
+	if r.Links == nil || len(post.Links) == 0 {
+		return nil, nil
+	}
+	return r.Links.Resolve(ctx, post.Links)
 }
 
 // kind resolves a channel's configured kind, defaulting to board for a post

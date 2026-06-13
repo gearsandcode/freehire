@@ -7,6 +7,10 @@ import (
 	"golang.org/x/net/html"
 )
 
+// LDJobPosting is the exported form of ldJobPosting, for sibling packages that parse a
+// server-rendered detail page into a sources.Job (e.g. internal/linksource).
+func LDJobPosting(root *html.Node, v any) bool { return ldJobPosting(root, v) }
+
 // ldJobPosting decodes the first application/ld+json JobPosting block on the page into v,
 // returning false when the page carries no such block. Shared by the HTML detail adapters
 // (teamtailor, breezy) whose job pages server-render a schema.org JobPosting; each passes
