@@ -197,7 +197,7 @@ export function unsaveJob(slug: string): Promise<UserJob> {
   return jobInteraction(slug, 'save', 'DELETE');
 }
 
-export type MyJobsFilter = 'all' | 'saved' | 'applied';
+export type MyJobsFilter = 'all' | 'viewed' | 'saved' | 'applied';
 
 /** The current user's job interactions, newest activity first. Alongside the
  *  page, the response carries the per-tab counts for the my-jobs tab badges. */

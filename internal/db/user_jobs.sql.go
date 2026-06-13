@@ -13,6 +13,8 @@ import (
 
 const countUserJobs = `-- name: CountUserJobs :one
 SELECT count(*)                                        AS "all",
+       count(*) FILTER (WHERE saved_at IS NULL
+                          AND applied_at IS NULL)      AS viewed,
        count(*) FILTER (WHERE saved_at   IS NOT NULL) AS saved,
        count(*) FILTER (WHERE applied_at IS NOT NULL) AS applied
 FROM user_jobs
@@ -21,16 +23,23 @@ WHERE user_id = $1
 
 type CountUserJobsRow struct {
 	All     int64 `json:"all"`
+	Viewed  int64 `json:"viewed"`
 	Saved   int64 `json:"saved"`
 	Applied int64 `json:"applied"`
 }
 
 // Per-filter row counts for the my-jobs tabs, in one aggregate pass. "all" is
-// every interaction row (viewed_at is always set).
+// every interaction row; "viewed" is the view-only subset (neither saved nor
+// applied), matching the ListUserJobs filter.
 func (q *Queries) CountUserJobs(ctx context.Context, userID int64) (CountUserJobsRow, error) {
 	row := q.db.QueryRow(ctx, countUserJobs, userID)
 	var i CountUserJobsRow
-	err := row.Scan(&i.All, &i.Saved, &i.Applied)
+	err := row.Scan(
+		&i.All,
+		&i.Viewed,
+		&i.Saved,
+		&i.Applied,
+	)
 	return i, err
 }
 
@@ -40,6 +49,7 @@ FROM user_jobs uj
 JOIN jobs ON jobs.id = uj.job_id
 WHERE uj.user_id = $1
   AND ($4::text = 'all'
+       OR ($4::text = 'viewed' AND uj.saved_at IS NULL AND uj.applied_at IS NULL)
        OR ($4::text = 'saved' AND uj.saved_at IS NOT NULL)
        OR ($4::text = 'applied' AND uj.applied_at IS NOT NULL))
 ORDER BY GREATEST(uj.viewed_at, uj.saved_at, uj.applied_at) DESC, uj.job_id DESC
@@ -62,8 +72,9 @@ type ListUserJobsRow struct {
 
 // A user's job interactions joined with the job rows, most recently touched
 // first (GREATEST ignores NULLs; viewed_at is always set). filter narrows to
-// saved/applied subsets; 'all' is every interaction. Closed jobs stay listed:
-// a user's history must not shrink when a posting closes.
+// viewed-only/saved/applied subsets; 'all' is every interaction, 'viewed' is
+// the passive history (rows neither saved nor applied). Closed jobs stay
+// listed: a user's history must not shrink when a posting closes.
 func (q *Queries) ListUserJobs(ctx context.Context, arg ListUserJobsParams) ([]ListUserJobsRow, error) {
 	rows, err := q.db.Query(ctx, listUserJobs,
 		arg.UserID,

@@ -29,7 +29,8 @@ type Querier interface {
 	CountCompanies(ctx context.Context, search string) (int64, error)
 	CountJobs(ctx context.Context) (int64, error)
 	// Per-filter row counts for the my-jobs tabs, in one aggregate pass. "all" is
-	// every interaction row (viewed_at is always set).
+	// every interaction row; "viewed" is the view-only subset (neither saved nor
+	// applied), matching the ListUserJobs filter.
 	CountUserJobs(ctx context.Context, userID int64) (CountUserJobsRow, error)
 	// Register a new account. email is stored as given (the handler lowercases it);
 	// the unique index on lower(email) rejects duplicates regardless of case.
@@ -89,8 +90,9 @@ type Querier interface {
 	ListJobsByIDAfter(ctx context.Context, arg ListJobsByIDAfterParams) ([]Job, error)
 	// A user's job interactions joined with the job rows, most recently touched
 	// first (GREATEST ignores NULLs; viewed_at is always set). filter narrows to
-	// saved/applied subsets; 'all' is every interaction. Closed jobs stay listed:
-	// a user's history must not shrink when a posting closes.
+	// viewed-only/saved/applied subsets; 'all' is every interaction, 'viewed' is
+	// the passive history (rows neither saved nor applied). Closed jobs stay
+	// listed: a user's history must not shrink when a posting closes.
 	ListUserJobs(ctx context.Context, arg ListUserJobsParams) ([]ListUserJobsRow, error)
 	// Mark a job as applied for a user. Idempotent and independent of a prior view:
 	// it inserts the row (viewed_at defaults) or updates applied_at in place.

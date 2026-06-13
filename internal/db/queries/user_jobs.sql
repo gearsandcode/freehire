@@ -35,13 +35,15 @@ RETURNING *;
 -- name: ListUserJobs :many
 -- A user's job interactions joined with the job rows, most recently touched
 -- first (GREATEST ignores NULLs; viewed_at is always set). filter narrows to
--- saved/applied subsets; 'all' is every interaction. Closed jobs stay listed:
--- a user's history must not shrink when a posting closes.
+-- viewed-only/saved/applied subsets; 'all' is every interaction, 'viewed' is
+-- the passive history (rows neither saved nor applied). Closed jobs stay
+-- listed: a user's history must not shrink when a posting closes.
 SELECT sqlc.embed(jobs), uj.viewed_at, uj.saved_at, uj.applied_at
 FROM user_jobs uj
 JOIN jobs ON jobs.id = uj.job_id
 WHERE uj.user_id = $1
   AND (sqlc.arg(filter)::text = 'all'
+       OR (sqlc.arg(filter)::text = 'viewed' AND uj.saved_at IS NULL AND uj.applied_at IS NULL)
        OR (sqlc.arg(filter)::text = 'saved' AND uj.saved_at IS NOT NULL)
        OR (sqlc.arg(filter)::text = 'applied' AND uj.applied_at IS NOT NULL))
 ORDER BY GREATEST(uj.viewed_at, uj.saved_at, uj.applied_at) DESC, uj.job_id DESC
@@ -49,8 +51,11 @@ LIMIT $2 OFFSET $3;
 
 -- name: CountUserJobs :one
 -- Per-filter row counts for the my-jobs tabs, in one aggregate pass. "all" is
--- every interaction row (viewed_at is always set).
+-- every interaction row; "viewed" is the view-only subset (neither saved nor
+-- applied), matching the ListUserJobs filter.
 SELECT count(*)                                        AS "all",
+       count(*) FILTER (WHERE saved_at IS NULL
+                          AND applied_at IS NULL)      AS viewed,
        count(*) FILTER (WHERE saved_at   IS NOT NULL) AS saved,
        count(*) FILTER (WHERE applied_at IS NOT NULL) AS applied
 FROM user_jobs

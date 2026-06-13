@@ -49,9 +49,10 @@ The system SHALL expose `GET /api/v1/me/jobs` (auth required) returning the
 authenticated user's interactions joined with the public job view shape,
 ordered by most recent interaction activity first, with limit/offset
 pagination. A `filter` query parameter SHALL narrow the list: `all` (default —
-every interaction), `saved` (`saved_at` set), `applied` (`applied_at` set). The
-list `meta` SHALL carry `total/limit/offset` for the active filter plus
-`counts` with the row counts of all three filters. Closed jobs SHALL remain in
+every interaction), `viewed` (view-only rows: neither saved nor applied),
+`saved` (`saved_at` set), `applied` (`applied_at` set). The list `meta` SHALL
+carry `total/limit/offset` for the active filter plus `counts` with the row
+counts of all four filters. Closed jobs SHALL remain in
 the listing (their job view carries `closed_at`). An unknown `filter` value
 SHALL be a `400`.
 
@@ -70,10 +71,16 @@ SHALL be a `400`.
 - **THEN** only interactions with non-null `applied_at` are returned
 - **AND** `meta.total` counts only those
 
+#### Scenario: Filtering to viewed-only
+
+- **WHEN** the user requests `GET /api/v1/me/jobs?filter=viewed`
+- **THEN** only interactions with null `saved_at` and null `applied_at` are
+  returned — the passive view history, without the jobs already acted on
+
 #### Scenario: Tab counts in meta
 
 - **WHEN** the user requests the listing with any filter
-- **THEN** `meta.counts` reports `{all, saved, applied}` for that user
+- **THEN** `meta.counts` reports `{all, viewed, saved, applied}` for that user
 
 #### Scenario: Closed job stays in the history
 

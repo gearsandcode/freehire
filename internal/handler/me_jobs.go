@@ -20,8 +20,8 @@ type myJobResponse struct {
 }
 
 // ListMyJobs returns the authenticated user's job interactions joined with the
-// jobs, most recently touched first, narrowed by ?filter=all|saved|applied
-// (default all). meta carries total/limit/offset for the active filter plus the
+// jobs, most recently touched first, narrowed by ?filter=all|viewed|saved|applied
+// (default all; viewed is the view-only subset — neither saved nor applied). meta carries total/limit/offset for the active filter plus the
 // per-filter counts for the tab badges — which is also why this writes its own
 // envelope instead of listResponse. Closed jobs stay listed: a user's history
 // must not shrink when a posting closes.
@@ -32,8 +32,8 @@ func (h *Handler) ListMyJobs(c *fiber.Ctx) error {
 	}
 
 	filter := c.Query("filter", "all")
-	if filter != "all" && filter != "saved" && filter != "applied" {
-		return fiber.NewError(fiber.StatusBadRequest, "filter must be one of: all, saved, applied")
+	if filter != "all" && filter != "viewed" && filter != "saved" && filter != "applied" {
+		return fiber.NewError(fiber.StatusBadRequest, "filter must be one of: all, viewed, saved, applied")
 	}
 	limit, offset := pageParams(c)
 
@@ -67,6 +67,8 @@ func (h *Handler) ListMyJobs(c *fiber.Ctx) error {
 
 	total := counts.All
 	switch filter {
+	case "viewed":
+		total = counts.Viewed
 	case "saved":
 		total = counts.Saved
 	case "applied":
@@ -81,6 +83,7 @@ func (h *Handler) ListMyJobs(c *fiber.Ctx) error {
 			"offset": offset,
 			"counts": fiber.Map{
 				"all":     counts.All,
+				"viewed":  counts.Viewed,
 				"saved":   counts.Saved,
 				"applied": counts.Applied,
 			},

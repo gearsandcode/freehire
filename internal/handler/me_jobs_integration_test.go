@@ -77,6 +77,7 @@ func TestListMyJobsEndpoint(t *testing.T) {
 			Offset int `json:"offset"`
 			Counts struct {
 				All     int `json:"all"`
+				Viewed  int `json:"viewed"`
 				Saved   int `json:"saved"`
 				Applied int `json:"applied"`
 			} `json:"counts"`
@@ -115,8 +116,18 @@ func TestListMyJobsEndpoint(t *testing.T) {
 			t.Error("job missing public_slug (not the jobview shape?)")
 		}
 		c := body.Meta.Counts
-		if c.All != 2 || c.Saved != 0 || c.Applied != 1 {
-			t.Errorf("counts = %+v, want all=2 saved=0 applied=1", c)
+		if c.All != 2 || c.Viewed != 1 || c.Saved != 0 || c.Applied != 1 {
+			t.Errorf("counts = %+v, want all=2 viewed=1 saved=0 applied=1", c)
+		}
+	})
+
+	t.Run("filter=viewed returns only view-only interactions", func(t *testing.T) {
+		body := doList(t, "/api/v1/me/jobs?filter=viewed")
+		if len(body.Data) != 1 || body.Meta.Total != 1 {
+			t.Fatalf("got %d items, total %d, want 1/1", len(body.Data), body.Meta.Total)
+		}
+		if body.Data[0].SavedAt != nil || body.Data[0].AppliedAt != nil {
+			t.Error("viewed filter returned an interaction that was saved or applied")
 		}
 	})
 

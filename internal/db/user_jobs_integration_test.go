@@ -253,6 +253,14 @@ func TestUserJobsSaveAndList(t *testing.T) {
 			}
 		}
 
+		viewed, err := q.ListUserJobs(ctx, ListUserJobsParams{UserID: uid, Filter: "viewed", Limit: 10, Offset: 0})
+		if err != nil {
+			t.Fatalf("list viewed: %v", err)
+		}
+		if len(viewed) != 1 || viewed[0].Job.ID != viewedJob {
+			t.Fatalf("list viewed: got %d rows, want exactly the view-only job (not saved, not applied)", len(viewed))
+		}
+
 		saved, err := q.ListUserJobs(ctx, ListUserJobsParams{UserID: uid, Filter: "saved", Limit: 10, Offset: 0})
 		if err != nil {
 			t.Fatalf("list saved: %v", err)
@@ -273,8 +281,8 @@ func TestUserJobsSaveAndList(t *testing.T) {
 		if err != nil {
 			t.Fatalf("counts: %v", err)
 		}
-		if counts.All != 3 || counts.Saved != 1 || counts.Applied != 1 {
-			t.Errorf("counts = %+v, want all=3 saved=1 applied=1", counts)
+		if counts.All != 3 || counts.Viewed != 1 || counts.Saved != 1 || counts.Applied != 1 {
+			t.Errorf("counts = %+v, want all=3 viewed=1 saved=1 applied=1", counts)
 		}
 	})
 }

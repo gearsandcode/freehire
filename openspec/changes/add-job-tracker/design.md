@@ -33,12 +33,14 @@ so the SPA toggle never needs a second read.
 
 ### One listing endpoint with a `filter` enum, counts in `meta`
 
-`GET /api/v1/me/jobs?filter=all|saved|applied` (default `all`). `/me/...` is the
-natural home for user-scoped reads (consistent with `GET /api/v1/auth/me`).
-Filters map to predicates on the one table:
+`GET /api/v1/me/jobs?filter=all|viewed|saved|applied` (default `all`). `/me/...`
+is the natural home for user-scoped reads (consistent with `GET
+/api/v1/auth/me`). Filters map to predicates on the one table:
 
-- `all` — every interaction row (`viewed_at` is always set, so "all" ≡ "viewed";
-  a separate `viewed` value would be a synonym, so it is omitted)
+- `all` — every interaction row
+- `viewed` — view-only rows (`saved_at IS NULL AND applied_at IS NULL`): the
+  passive history without the jobs already acted on (a "viewed = every row"
+  reading would just duplicate `all`)
 - `saved` — `saved_at IS NOT NULL`
 - `applied` — `applied_at IS NOT NULL`
 
@@ -53,8 +55,8 @@ Response item shape: `{"job": <jobview>, "viewed_at", "saved_at", "applied_at"}`
 interaction fields ride alongside rather than being flattened into it.
 
 `meta` carries the standard `total/limit/offset` for the active filter plus
-`counts: {all, saved, applied}` so the SPA renders tab badges without three
-requests. Counts come from one aggregate query
+`counts: {all, viewed, saved, applied}` so the SPA renders tab badges without
+extra requests. Counts come from one aggregate query
 (`COUNT(*) FILTER (WHERE ...)`), not three round-trips.
 
 An unknown `filter` value is a `400` (explicit input contract, matching the

@@ -115,9 +115,11 @@ export interface MyJob {
   applied_at: string | null;
 }
 
-/** Per-tab row counts for the my-jobs page, from the listing's meta. */
+/** Per-tab row counts for the my-jobs page, from the listing's meta. `viewed`
+ *  is the view-only subset: rows neither saved nor applied. */
 export interface MyJobCounts {
   all: number;
+  viewed: number;
   saved: number;
   applied: number;
 }
