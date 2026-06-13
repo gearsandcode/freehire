@@ -7,8 +7,8 @@
 
 ## 2. Auth: token primitives & dual-auth middleware (internal/auth)
 
-- [ ] 2.1 Add `apikey.go`: `GenerateAPIKey() (token, hash, prefix string, err error)` (prefix `fhk_`, 32 bytes from `crypto/rand`, base64url) and `HashAPIKey(token string) string` (SHA-256 hex). Tests: token has the `fhk_` prefix, two calls differ, `HashAPIKey` is deterministic and matches the hash returned by `GenerateAPIKey`, `token_prefix` is a non-secret slice of the token.
-- [ ] 2.2 Add the `APIKeyAuthenticator` interface (`AuthenticateAPIKey(ctx, tokenHash string) (int64, error)`) and `RequireAuthOrKey(iss *Issuer, keys APIKeyAuthenticator) fiber.Handler`: try the cookie (existing path) first, else read `Authorization: Bearer <key>`, `HashAPIKey` it, resolve the owner, and store the id in `c.Locals("auth.userID")`; otherwise `401`. Tests (with a fake authenticator): valid key → locals set + `Next`; unknown/garbage → 401; resolver error (expired) → 401; valid cookie alone still authenticates; cookie present + valid takes precedence; neither → 401.
+- [x] 2.1 Add `apikey.go`: `GenerateAPIKey() (token, hash, prefix string, err error)` (prefix `fhk_`, 32 bytes from `crypto/rand`, base64url) and `HashAPIKey(token string) string` (SHA-256 hex). Tests: token has the `fhk_` prefix, two calls differ, `HashAPIKey` is deterministic and matches the hash returned by `GenerateAPIKey`, `token_prefix` is a non-secret slice of the token.
+- [x] 2.2 Add the `APIKeyAuthenticator` interface (`AuthenticateAPIKey(ctx, tokenHash string) (int64, error)`) and `RequireAuthOrKey(iss *Issuer, keys APIKeyAuthenticator) fiber.Handler`: try the cookie (existing path) first, else read `Authorization: Bearer <key>`, `HashAPIKey` it, resolve the owner, and store the id in `c.Locals("auth.userID")`; otherwise `401`. Tests (with a fake authenticator): valid key → locals set + `Next`; unknown/garbage → 401; resolver error (expired) → 401; valid cookie alone still authenticates; cookie present + valid takes precedence; neither → 401.
 
 ## 3. HTTP: key-management handlers & route wiring (internal/handler)
 
