@@ -12,23 +12,22 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/strelov1/freehire/internal/auth/oauth"
+	"github.com/strelov1/freehire/internal/accounts"
 	"github.com/strelov1/freehire/internal/db"
 )
 
 func oauthHandler(t *testing.T) *Handler {
 	t.Helper()
 	pool := startPostgres(t)
-	return &Handler{pool: pool, queries: db.New(pool)}
+	queries := db.New(pool)
+	return &Handler{pool: pool, queries: queries, accounts: accounts.New(accounts.NewQueriesRepository(queries, pool))}
 }
 
 func TestResolveOAuthUser_CreatesPasswordlessUser(t *testing.T) {
 	h := oauthHandler(t)
 	ctx := context.Background()
 
-	id, err := h.resolveOAuthUser(ctx, "google", oauth.Identity{
-		ProviderUserID: "g-1", Email: "New@Example.com", EmailVerified: true,
-	})
+	id, err := h.accounts.ResolveOAuthAccount(ctx, "google", "g-1", "New@Example.com", true)
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -48,15 +47,12 @@ func TestResolveOAuthUser_CreatesPasswordlessUser(t *testing.T) {
 func TestResolveOAuthUser_ReturningIdentityResolvesSameUser(t *testing.T) {
 	h := oauthHandler(t)
 	ctx := context.Background()
-	identity := oauth.Identity{ProviderUserID: "g-2", Email: "ret@example.com", EmailVerified: true}
-
-	first, err := h.resolveOAuthUser(ctx, "google", identity)
+	first, err := h.accounts.ResolveOAuthAccount(ctx, "google", "g-2", "ret@example.com", true)
 	if err != nil {
 		t.Fatalf("first resolve: %v", err)
 	}
 	// Even if the provider email changed since, the identity wins.
-	identity.Email = "changed@example.com"
-	second, err := h.resolveOAuthUser(ctx, "google", identity)
+	second, err := h.accounts.ResolveOAuthAccount(ctx, "google", "g-2", "changed@example.com", true)
 	if err != nil {
 		t.Fatalf("second resolve: %v", err)
 	}
@@ -80,9 +76,7 @@ func TestResolveOAuthUser_LinksExistingPasswordAccountByEmail(t *testing.T) {
 		t.Fatalf("seed user: %v", err)
 	}
 
-	id, err := h.resolveOAuthUser(ctx, "github", oauth.Identity{
-		ProviderUserID: "gh-1", Email: "Linked@Example.com", EmailVerified: true,
-	})
+	id, err := h.accounts.ResolveOAuthAccount(ctx, "github", "gh-1", "Linked@Example.com", true)
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -100,9 +94,7 @@ func TestResolveOAuthUser_RejectsUnverifiedEmail(t *testing.T) {
 	h := oauthHandler(t)
 	ctx := context.Background()
 
-	if _, err := h.resolveOAuthUser(ctx, "github", oauth.Identity{
-		ProviderUserID: "gh-2", Email: "victim@example.com", EmailVerified: false,
-	}); err == nil {
+	if _, err := h.accounts.ResolveOAuthAccount(ctx, "github", "gh-2", "victim@example.com", false); err == nil {
 		t.Fatal("want error for unverified email")
 	}
 	if _, err := h.queries.GetUserByEmail(ctx, "victim@example.com"); err == nil {
@@ -114,15 +106,11 @@ func TestResolveOAuthUser_SameEmailDifferentProvidersShareAccount(t *testing.T) 
 	h := oauthHandler(t)
 	ctx := context.Background()
 
-	a, err := h.resolveOAuthUser(ctx, "google", oauth.Identity{
-		ProviderUserID: "g-3", Email: "multi@example.com", EmailVerified: true,
-	})
+	a, err := h.accounts.ResolveOAuthAccount(ctx, "google", "g-3", "multi@example.com", true)
 	if err != nil {
 		t.Fatalf("google resolve: %v", err)
 	}
-	b, err := h.resolveOAuthUser(ctx, "github", oauth.Identity{
-		ProviderUserID: "gh-3", Email: "multi@example.com", EmailVerified: true,
-	})
+	b, err := h.accounts.ResolveOAuthAccount(ctx, "github", "gh-3", "multi@example.com", true)
 	if err != nil {
 		t.Fatalf("github resolve: %v", err)
 	}
