@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/strelov1/freehire/internal/auth"
+	"github.com/strelov1/freehire/internal/userjob"
 )
 
 // trackApp mounts the track route on a handler with no DB. The auth gate and the
@@ -63,13 +64,13 @@ func TestTrackJob_RequiresAuth(t *testing.T) {
 }
 
 func TestIsValidStage(t *testing.T) {
-	for _, s := range []string{"applied", "screening", "responded", "interview", "offer", "accepted", "rejected", "withdrawn"} {
-		if !isValidStage(s) {
+	for _, s := range userjob.Stages {
+		if !userjob.ValidStage(s) {
 			t.Errorf("%q should be a valid stage", s)
 		}
 	}
 	for _, s := range []string{"banana", "", "Applied", "interviewing"} {
-		if isValidStage(s) {
+		if userjob.ValidStage(s) {
 			t.Errorf("%q should be invalid", s)
 		}
 	}
