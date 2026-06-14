@@ -11,7 +11,6 @@ import json
 import re
 import subprocess
 import sys
-import urllib.error
 import urllib.request
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +31,9 @@ SLUG_PATTERNS = [
     (re.compile(r"([A-Za-z0-9_-]+)\.bamboohr\.com"), "bamboohr"),
     (re.compile(r"([A-Za-z0-9_-]+)\.breezy\.hr"), "breezy"),
     (re.compile(r"([A-Za-z0-9_-]+)\.jobs\.personio\.(?:com|de)"), "personio"),
+    # Teamtailor's "slug" is the whole board host — the adapter takes board = hostname.
+    # Only *.teamtailor.com hosts are detectable here; boards on a custom domain
+    # (e.g. jobs.tibber.com) carry no teamtailor marker in the URL and are missed.
     (re.compile(r"([A-Za-z0-9_-]+\.teamtailor\.com)"), "teamtailor"),
 ]
 
@@ -40,6 +42,8 @@ SLUG_BLOCKLIST = {
     "api", "widget", "backend", "www", "app", "auth", "referrals", "v1",
 }
 
+# Validation endpoints — each identical to the one its internal/sources/<provider>.go
+# adapter calls. bamboohr returns JSON, personio XML, teamtailor HTML (see validate()).
 VALIDATORS = {
     "greenhouse": lambda s: f"https://boards-api.greenhouse.io/v1/boards/{s}/jobs?content=true",
     "lever": lambda s: f"https://api.lever.co/v0/postings/{s}?mode=json",
@@ -48,9 +52,9 @@ VALIDATORS = {
     "workable": lambda s: f"https://apply.workable.com/api/v1/widget/accounts/{s}?details=true",
     "recruitee": lambda s: f"https://{s}.recruitee.com/api/offers/",
     "bamboohr": lambda s: f"https://{s}.bamboohr.com/careers/list",
-    "breezy": lambda s: f"https://{s}.breezy.hr/json",
+    "breezy": lambda s: f"https://{s}.breezy.hr/json",  # top-level JSON array of positions
     "personio": lambda s: f"https://{s}.jobs.personio.com/xml",
-    "teamtailor": lambda s: f"https://{s}/jobs",
+    "teamtailor": lambda s: f"https://{s}/jobs",  # s is the board host, not a slug
 }
 
 
@@ -72,7 +76,11 @@ def yaml_name(name: str) -> str:
 
 
 def extract_slugs(text: str) -> set[tuple[str, str]]:
-    """Sweep raw text for ATS board URLs -> {(provider, slug)}."""
+    """Sweep raw text for ATS board URLs -> {(provider, slug)}.
+
+    Patterns may carry multiple alternation groups (e.g. SmartRecruiters' two host
+    forms), so take the first non-empty group of each match as the slug.
+    """
     out: set[tuple[str, str]] = set()
     for pat, provider in SLUG_PATTERNS:
         for m in pat.finditer(text):
