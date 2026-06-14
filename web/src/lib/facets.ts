@@ -3,13 +3,18 @@
 // render, its options (for pills/select), and whether it supports an "exclude"
 // mode. The panel iterates this list; the store keys facet state by `param`.
 //
-// SOURCE OF TRUTH for the closed-vocabulary option values below (work mode,
-// seniority, category, employment type, domains, relocation, English level,
-// company type/size, salary period): internal/enrich/enrichment.go, which the
-// enrichment worker validates against. When a vocabulary changes there, update
-// the matching list here. Drift is not fatal — enrichment.ts's humanize()
-// renders an unknown value as a readable label rather than blank — but the facet
-// would silently stop offering it as a filter.
+// SOURCE_VALUES and the other generated value arrays (WORK_MODE_VALUES, etc.)
+// in ./generated/contracts are the single source of truth for closed-vocabulary
+// option values. A new backend value appears automatically here (humanized);
+// only the label-override map below needs updating when the label differs from
+// the title-cased fallback. REGION, POSTING_LANGUAGE, and CURRENCY are curated
+// subsets not driven by generated arrays — leave those alone.
+
+import {
+  SOURCE_VALUES, WORK_MODE_VALUES, SENIORITY_VALUES, CATEGORY_VALUES,
+  EMPLOYMENT_TYPE_VALUES, RELOCATION_VALUES, ENGLISH_LEVEL_VALUES,
+  COMPANY_TYPE_VALUES, DOMAIN_VALUES,
+} from './generated/contracts';
 
 export interface FacetOption {
   value: string;
@@ -29,40 +34,27 @@ export interface FacetDef {
   placeholder?: string;
 }
 
-const WORK_MODE: FacetOption[] = [
-  { value: 'remote', label: 'Remote' },
-  { value: 'hybrid', label: 'Hybrid' },
-  { value: 'onsite', label: 'On-site' },
-];
+/** A title-cased fallback label for a value with no explicit label. */
+function humanize(value: string): string {
+  return value
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
 
-// The platform a job was ingested from. Unlike the enrichment facets below, this
-// value is always present (the ingest pipeline sets it), so it is the one fully
-// reliable filter. Values are the Provider() strings of the multi-tenant ATS
-// adapters in internal/sources (sources.All) plus the literal "telegram" set by
-// the tg-extract worker. Single-company boardless adapters (Yandex, Ozon, Sber,
-// T-Bank, VK, … — those implementing the boardless marker) are deliberately
-// omitted: filtering by a one-company platform is redundant with the company
-// filter and would clutter the list. A new ATS platform means a new entry here.
-const SOURCE: FacetOption[] = [
-  { value: 'telegram', label: 'Telegram' },
-  { value: 'greenhouse', label: 'Greenhouse' },
-  { value: 'lever', label: 'Lever' },
-  { value: 'ashby', label: 'Ashby' },
-  { value: 'workable', label: 'Workable' },
-  { value: 'recruitee', label: 'Recruitee' },
-  { value: 'smartrecruiters', label: 'SmartRecruiters' },
-  { value: 'personio', label: 'Personio' },
-  { value: 'pinpoint', label: 'Pinpoint' },
-  { value: 'rippling', label: 'Rippling' },
-  { value: 'bamboohr', label: 'BambooHR' },
-  { value: 'workday', label: 'Workday' },
-  { value: 'huntflow', label: 'Huntflow' },
-  { value: 'gem', label: 'Gem' },
-  { value: 'successfactors', label: 'SuccessFactors' },
-  { value: 'teamtailor', label: 'Teamtailor' },
-  { value: 'breezy', label: 'Breezy' },
-  { value: 'join', label: 'Join' },
-];
+/** Build facet options from generated values, overriding labels where given. */
+function options(values: readonly string[], labels: Record<string, string> = {}): FacetOption[] {
+  return values.map((value) => ({ value, label: labels[value] ?? humanize(value) }));
+}
+
+// Values come from the generated SOURCE_VALUES (sources.All adapter registry +
+// "telegram" from the tg-extract worker). A new ATS adapter appears here
+// automatically; only add a label override below when the label differs from
+// the title-cased fallback (e.g. "smartrecruiters" → "SmartRecruiters").
+const SOURCE: FacetOption[] = options(SOURCE_VALUES, {
+  telegram: 'Telegram', greenhouse: 'Greenhouse', smartrecruiters: 'SmartRecruiters',
+  bamboohr: 'BambooHR', successfactors: 'SuccessFactors',
+});
 
 // The backend's full `regions` reach vocabulary (enrich.RegionValues). Values mix
 // levels by design (global / macro-region / country-as-area); keep this in sync
@@ -85,48 +77,27 @@ const REGION: FacetOption[] = [
   { value: 'central_asia', label: 'Central Asia' },
 ];
 
-const SENIORITY: FacetOption[] = [
-  { value: 'intern', label: 'Intern' },
-  { value: 'junior', label: 'Junior' },
-  { value: 'middle', label: 'Middle' },
-  { value: 'senior', label: 'Senior' },
-  { value: 'lead', label: 'Lead' },
-  { value: 'principal', label: 'Principal' },
-  { value: 'c_level', label: 'C-level' },
-];
-
-const COMPANY_TYPE: FacetOption[] = [
-  { value: 'startup', label: 'Startup' },
-  { value: 'product', label: 'Product' },
-  { value: 'outsource', label: 'Outsource' },
-  { value: 'outstaff', label: 'Outstaff' },
-  { value: 'agency', label: 'Agency' },
-  { value: 'inhouse', label: 'In-house' },
-  { value: 'government', label: 'Government' },
-];
-
-const EMPLOYMENT: FacetOption[] = [
-  { value: 'full_time', label: 'Full-time' },
-  { value: 'part_time', label: 'Part-time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'internship', label: 'Internship' },
-];
-
-const RELOCATION: FacetOption[] = [
-  { value: 'not_supported', label: 'None' },
-  { value: 'supported', label: 'Supported' },
-  { value: 'required', label: 'Required' },
-];
-
-const ENGLISH: FacetOption[] = [
-  { value: 'a1', label: 'A1' },
-  { value: 'a2', label: 'A2' },
-  { value: 'b1', label: 'B1' },
-  { value: 'b2', label: 'B2' },
-  { value: 'c1', label: 'C1' },
-  { value: 'c2', label: 'C2' },
-  { value: 'native', label: 'Native' },
-];
+const WORK_MODE: FacetOption[] = options(WORK_MODE_VALUES, { onsite: 'On-site' });
+const SENIORITY: FacetOption[] = options(SENIORITY_VALUES, { c_level: 'C-level' });
+const COMPANY_TYPE: FacetOption[] = options(COMPANY_TYPE_VALUES, { inhouse: 'In-house' });
+const EMPLOYMENT: FacetOption[] = options(EMPLOYMENT_TYPE_VALUES, {
+  full_time: 'Full-time', part_time: 'Part-time',
+});
+const RELOCATION: FacetOption[] = options(RELOCATION_VALUES, {
+  not_supported: 'None', supported: 'Supported', required: 'Required',
+});
+const ENGLISH: FacetOption[] = options(ENGLISH_LEVEL_VALUES, {
+  a1: 'A1', a2: 'A2', b1: 'B1', b2: 'B2', c1: 'C1', c2: 'C2', native: 'Native', none: 'None',
+});
+const CATEGORY: FacetOption[] = options(CATEGORY_VALUES, {
+  ml_ai: 'ML / AI', data_engineering: 'Data Engineering', data_science: 'Data Science',
+  data_analytics: 'Data Analytics', qa: 'QA', devops: 'DevOps', sre: 'SRE',
+  project_management: 'Project Management',
+});
+const DOMAINS: FacetOption[] = options(DOMAIN_VALUES, {
+  ecommerce: 'E-commerce', saas: 'SaaS', edtech: 'Edtech', adtech: 'Adtech',
+  govtech: 'Govtech', fintech: 'Fintech', gamedev: 'Gamedev', healthcare: 'Healthcare',
+});
 
 const POSTING_LANGUAGE: FacetOption[] = [
   { value: 'en', label: 'EN' },
@@ -139,44 +110,6 @@ const CURRENCY: FacetOption[] = [
   { value: 'EUR', label: 'EUR' },
   { value: 'GBP', label: 'GBP' },
   { value: 'RUB', label: 'RUB' },
-];
-
-const CATEGORY: FacetOption[] = [
-  { value: 'backend', label: 'Backend' },
-  { value: 'frontend', label: 'Frontend' },
-  { value: 'fullstack', label: 'Fullstack' },
-  { value: 'mobile', label: 'Mobile' },
-  { value: 'devops', label: 'DevOps' },
-  { value: 'data_engineering', label: 'Data Engineering' },
-  { value: 'data_science', label: 'Data Science' },
-  { value: 'ml_ai', label: 'ML / AI' },
-  { value: 'qa', label: 'QA' },
-  { value: 'security', label: 'Security' },
-  { value: 'design', label: 'Design' },
-  { value: 'product', label: 'Product' },
-  { value: 'project_management', label: 'Project Management' },
-  { value: 'management', label: 'Management' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'support', label: 'Support' },
-  { value: 'other', label: 'Other' },
-];
-
-const DOMAINS: FacetOption[] = [
-  { value: 'fintech', label: 'Fintech' },
-  { value: 'gambling', label: 'Gambling' },
-  { value: 'ecommerce', label: 'E-commerce' },
-  { value: 'crypto', label: 'Crypto' },
-  { value: 'healthcare', label: 'Healthcare' },
-  { value: 'saas', label: 'SaaS' },
-  { value: 'gamedev', label: 'Gamedev' },
-  { value: 'edtech', label: 'Edtech' },
-  { value: 'adtech', label: 'Adtech' },
-  { value: 'govtech', label: 'Govtech' },
-  { value: 'media', label: 'Media' },
-  { value: 'travel', label: 'Travel' },
-  { value: 'logistics', label: 'Logistics' },
-  { value: 'other', label: 'Other' },
 ];
 
 export const FACETS: FacetDef[] = [

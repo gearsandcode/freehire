@@ -9,6 +9,7 @@ import (
 
 	"github.com/strelov1/freehire/internal/auth"
 	"github.com/strelov1/freehire/internal/db"
+	"github.com/strelov1/freehire/internal/userjob"
 )
 
 // interactionResponse is the public shape of a user's interaction with a job. It
@@ -103,16 +104,6 @@ func (h *Handler) UnsaveJob(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": toInteraction(row)})
 }
 
-// validStages is the controlled application-stage vocabulary and the source of
-// truth: the track endpoint rejects any value not in this set (the SPA mirrors
-// it). Active pipeline then terminal states.
-var validStages = map[string]bool{
-	"applied": true, "screening": true, "responded": true, "interview": true,
-	"offer": true, "accepted": true, "rejected": true, "withdrawn": true,
-}
-
-func isValidStage(s string) bool { return validStages[s] }
-
 // trackRequest is the track body: an optional stage and/or notes. A nil field is
 // left unchanged by the upsert; at least one must be present.
 type trackRequest struct {
@@ -138,7 +129,7 @@ func (h *Handler) TrackJob(c *fiber.Ctx) error {
 	if in.Stage == nil && in.Notes == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "provide stage and/or notes")
 	}
-	if in.Stage != nil && !isValidStage(*in.Stage) {
+	if in.Stage != nil && !userjob.ValidStage(*in.Stage) {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid stage")
 	}
 
