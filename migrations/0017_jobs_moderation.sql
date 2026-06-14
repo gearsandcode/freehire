@@ -11,6 +11,9 @@ ALTER TABLE users
 -- telegram, link-following) — they have no acting user. created_by is stamped once
 -- at creation; updated_by is rewritten on each moderator edit. Both reference users
 -- but are not part of the public wire shape.
+-- ON DELETE SET NULL (not CASCADE, the convention for the ownership FKs on user_jobs/
+-- api_keys/user_identities): these are audit references, not ownership — deleting the
+-- authoring user must blank the audit, never delete the job.
 ALTER TABLE jobs
-    ADD COLUMN created_by BIGINT REFERENCES users(id),
-    ADD COLUMN updated_by BIGINT REFERENCES users(id);
+    ADD COLUMN created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    ADD COLUMN updated_by BIGINT REFERENCES users(id) ON DELETE SET NULL;

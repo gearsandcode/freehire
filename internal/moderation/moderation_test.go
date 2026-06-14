@@ -144,6 +144,35 @@ func TestUpdate_MergesAndRederives(t *testing.T) {
 	}
 }
 
+func TestCreate_RemoteDerivesWorkMode(t *testing.T) {
+	repo := &fakeRepo{}
+	_, err := moderation.New(repo).Create(context.Background(), 7, moderation.CreateInput{
+		URL:      "https://acme.example/jobs/r",
+		Title:    "Dev",
+		Company:  "Acme",
+		Location: "Berlin", // no remote marker in the text
+		Remote:   true,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if repo.created.WorkMode != "remote" {
+		t.Errorf("WorkMode = %q, want remote (derived from the remote flag)", repo.created.WorkMode)
+	}
+}
+
+func TestUpdate_RejectsBlankRequiredField(t *testing.T) {
+	repo := &fakeRepo{bySlugJob: db.Job{Source: "manual"}}
+	blank := ""
+	_, err := moderation.New(repo).Update(context.Background(), 9, "slug", moderation.UpdatePatch{Company: &blank})
+	if !errors.Is(err, moderation.ErrInvalid) {
+		t.Errorf("err = %v, want ErrInvalid for a blanked company", err)
+	}
+	if repo.updateCalled {
+		t.Error("repo.Update should not be called when validation fails")
+	}
+}
+
 func TestUpdate_NotFoundPropagates(t *testing.T) {
 	repo := &fakeRepo{bySlugErr: moderation.ErrJobNotFound}
 	_, err := moderation.New(repo).Update(context.Background(), 9, "missing", moderation.UpdatePatch{})

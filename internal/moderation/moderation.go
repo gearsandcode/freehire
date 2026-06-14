@@ -91,6 +91,7 @@ func (s *Service) Create(ctx context.Context, actorID int64, in CreateInput) (db
 		ExternalID:  in.URL,
 		Location:    in.Location,
 		Description: in.Description,
+		WorkMode:    remoteWorkMode(in.Remote),
 	})
 	return s.repo.Create(ctx, db.UpsertManualJobParams{
 		ExternalID:  in.URL,
@@ -118,6 +119,9 @@ func (s *Service) Create(ctx context.Context, actorID int64, in CreateInput) (db
 // identity (url/external_id/public_slug) is never recomputed, keeping the public slug
 // stable. A missing or non-manual slug surfaces ErrJobNotFound.
 func (s *Service) Update(ctx context.Context, actorID int64, slug string, p UpdatePatch) (db.Job, error) {
+	if err := p.validate(); err != nil {
+		return db.Job{}, err
+	}
 	cur, err := s.repo.BySlug(ctx, slug)
 	if err != nil {
 		return db.Job{}, err
@@ -144,6 +148,7 @@ func (s *Service) Update(ctx context.Context, actorID int64, slug string, p Upda
 		ExternalID:  cur.ExternalID,
 		Location:    location,
 		Description: description,
+		WorkMode:    remoteWorkMode(remote),
 	})
 	return s.repo.Update(ctx, db.UpdateManualJobParams{
 		PublicSlug:  slug,
@@ -179,6 +184,29 @@ func (in CreateInput) validate() error {
 		return fmt.Errorf("%w: url must be an absolute http(s) URL", ErrInvalid)
 	}
 	return nil
+}
+
+// validate rejects an edit that would blank a required field: a supplied (non-nil)
+// title or company must not be empty, mirroring Create's required-field guard. URL is
+// the immutable identity and is not editable here, so it is not checked.
+func (p UpdatePatch) validate() error {
+	if p.Title != nil && strings.TrimSpace(*p.Title) == "" {
+		return fmt.Errorf("%w: title must not be empty", ErrInvalid)
+	}
+	if p.Company != nil && strings.TrimSpace(*p.Company) == "" {
+		return fmt.Errorf("%w: company must not be empty", ErrInvalid)
+	}
+	return nil
+}
+
+// remoteWorkMode maps the moderator's structured remote flag onto a work-mode signal
+// (the same role the ATS adapters' workplace-type enum plays): remote=true yields the
+// "remote" facet; otherwise the value is left to the location parser's hint.
+func remoteWorkMode(remote bool) string {
+	if remote {
+		return "remote"
+	}
+	return ""
 }
 
 // stringOr returns *p when set, else the fallback — the nil-means-unchanged merge.

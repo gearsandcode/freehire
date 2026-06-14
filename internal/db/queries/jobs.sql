@@ -156,6 +156,9 @@ RETURNING *;
 -- is deliberately NOT updatable here. The company row is upserted when a slug is present,
 -- so "a company's jobs" stays resolvable. updated_by records the acting moderator. Returns
 -- no row when the slug is missing or not a manual job (the caller maps that to 404).
+-- closed_at is deliberately NOT touched: an edit is a content fix, not a lifecycle change.
+-- Reopening a closed posting is the re-create (same-URL UpsertManualJob) path's job, so a
+-- content edit never resurrects a job the sweep/liveness worker closed.
 WITH company_upsert AS (
     INSERT INTO companies (slug, name)
     SELECT sqlc.arg(company_slug), sqlc.arg(company)
