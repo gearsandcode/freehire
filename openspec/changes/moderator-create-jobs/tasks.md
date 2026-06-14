@@ -3,7 +3,7 @@
 - [x] 1.1 Add migration `0017_jobs_moderation.sql`: `users.role` (TEXT NOT NULL DEFAULT 'user', CHECK in user/moderator/admin), `jobs.created_by` + `jobs.updated_by` (BIGINT REFERENCES users(id), nullable)
 - [x] 1.2 Add a slim `GetUserRole :one` query in `queries/users.sql` (role by id) for the hot middleware path — leaves the existing `GetUserByID` row shape untouched
 - [x] 1.3 Add `UpsertManualJob :one` to `queries/jobs.sql`: fixed `source='manual'`, writes `created_by` on INSERT and `updated_by` on `ON CONFLICT (source, external_id) DO UPDATE`; enqueue stays a separate call
-- [x] 1.4 Add `UpdateManualJob :one` to `queries/jobs.sql`: partial update by `WHERE public_slug = $1 AND source = 'manual'` using `COALESCE($field, jobs.field)`, set `updated_by` + `updated_at = now()`, RETURNING the row
+- [x] 1.4 Add `UpdateManualJob :one` to `queries/jobs.sql`: full-field update by `WHERE public_slug = $1 AND source = 'manual'` (content + re-derived facets), upsert the company when its slug is supplied, set `updated_by` + `updated_at = now()`, RETURNING the row. Merge of partial input happens in the service (load-merge-derive-write), not via SQL COALESCE
 - [x] 1.5 Run `make sqlc` and commit the regenerated `internal/db`
 
 ## 2. Shared derivation helper
@@ -18,9 +18,9 @@
 
 ## 4. Moderation service (`internal/moderation`)
 
-- [ ] 4.1 Define `Service` + `Repository` interface mirroring `internal/jobtracking`; `Repository` adapts `*db.Queries` + pool for the transactional create/update
-- [ ] 4.2 Implement `Create(ctx, actorID, input)`: validate (url/title/company required, url is http(s)) → derive via the helper → tx: `UpsertManualJob` + `EnqueueJobEnrichment` (RED: validation rejects missing/invalid fields; success derives + returns job)
-- [ ] 4.3 Implement `Update(ctx, actorID, slug, patch)`: partial update via `UpdateManualJob`, nil field = unchanged, identity untouched (RED: partial update changes only supplied fields; non-manual/unknown slug → not-found error)
+- [x] 4.1 Define `Service` + `Repository` interface mirroring `internal/jobtracking`; `Repository` adapts `*db.Queries` + pool for the transactional create/update
+- [x] 4.2 Implement `Create(ctx, actorID, input)`: validate (url/title/company required, url is http(s)) → derive via the helper → tx: `UpsertManualJob` + `EnqueueJobEnrichment` (RED: validation rejects missing/invalid fields; success derives + returns job)
+- [x] 4.3 Implement `Update(ctx, actorID, slug, patch)`: load the manual job (not-found for missing/non-manual), merge nil-means-unchanged patch in Go, re-derive facets via the helper (public_slug/identity untouched), write the full row via `UpdateManualJob` (RED: partial merge changes only supplied fields; location edit recomputes geography; non-manual/unknown slug → not-found error)
 
 ## 5. Handler & routes (`internal/handler`)
 

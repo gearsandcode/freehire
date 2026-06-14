@@ -149,29 +149,33 @@ RETURNING *;
 
 -- name: UpdateManualJob :one
 -- Moderator edit of a hand-curated job, addressed by public_slug and scoped to
--- source = 'manual' so this path can never rewrite an ATS/telegram vacancy. Each
--- content field uses COALESCE(narg, column): a NULL arg leaves the column unchanged
--- (partial update). The source identity (url/external_id/public_slug) is deliberately
--- not updatable here. The company is upserted only when a new company_slug is supplied,
--- so "a company's jobs" stays resolvable. updated_by records the acting moderator.
--- Returns no row when the slug is missing or not a manual job (the caller maps that to
--- 404).
+-- source = 'manual' so this path can never rewrite an ATS/telegram vacancy. The
+-- partial merge (nil = unchanged) and facet re-derivation happen in the service; this
+-- query writes the resulting full field set, so geography/skills/company_slug stay
+-- consistent with the edited content. The source identity (url/external_id/public_slug)
+-- is deliberately NOT updatable here. The company row is upserted when a slug is present,
+-- so "a company's jobs" stays resolvable. updated_by records the acting moderator. Returns
+-- no row when the slug is missing or not a manual job (the caller maps that to 404).
 WITH company_upsert AS (
     INSERT INTO companies (slug, name)
-    SELECT sqlc.narg(company_slug), sqlc.narg(company)
-    WHERE sqlc.narg(company_slug) IS NOT NULL AND sqlc.narg(company_slug) <> ''
+    SELECT sqlc.arg(company_slug), sqlc.arg(company)
+    WHERE sqlc.arg(company_slug) <> ''
     ON CONFLICT (slug) DO UPDATE SET
         name       = EXCLUDED.name,
         updated_at = now()
 )
 UPDATE jobs
-SET title        = COALESCE(sqlc.narg(title), title),
-    company      = COALESCE(sqlc.narg(company), company),
-    company_slug = COALESCE(sqlc.narg(company_slug), company_slug),
-    location     = COALESCE(sqlc.narg(location), location),
-    remote       = COALESCE(sqlc.narg(remote), remote),
-    description  = COALESCE(sqlc.narg(description), description),
-    posted_at    = COALESCE(sqlc.narg(posted_at), posted_at),
+SET title        = sqlc.arg(title),
+    company      = sqlc.arg(company),
+    company_slug = sqlc.arg(company_slug),
+    location     = sqlc.arg(location),
+    remote       = sqlc.arg(remote),
+    description  = sqlc.arg(description),
+    posted_at    = sqlc.arg(posted_at),
+    countries    = COALESCE(sqlc.arg(countries)::text[], '{}'),
+    regions      = COALESCE(sqlc.arg(regions)::text[], '{}'),
+    work_mode    = sqlc.arg(work_mode),
+    skills       = COALESCE(sqlc.arg(skills)::text[], '{}'),
     updated_by   = sqlc.arg(updated_by)::bigint,
     updated_at   = now()
 WHERE public_slug = sqlc.arg(public_slug) AND source = 'manual'

@@ -64,10 +64,20 @@ The system SHALL allow a moderator to partially update a manual vacancy through
 fields are left unchanged. The system MUST set `updated_by` to the acting moderator and
 MUST NOT change the job's source identity (`url` / `external_id` / `public_slug`).
 
+When a content field that feeds a deterministic facet changes (location → geography,
+description → skills, company → company slug), the system SHALL recompute that facet from
+the resulting values so the stored facets stay consistent with the edited content. (AI
+enrichment is not re-run — that remains a separate concern.)
+
 #### Scenario: Partial update changes only supplied fields
 
 - **WHEN** a moderator `PATCH`es `/api/v1/jobs/:slug` with `{ "title": "New" }`
 - **THEN** the job's title becomes `New`, all other content fields are unchanged, `updated_by` is set, and the response is `200` with `{ "data": <job> }`
+
+#### Scenario: Editing location recomputes geography
+
+- **WHEN** a moderator `PATCH`es a job's `location` to one that resolves to a new country
+- **THEN** the job's stored countries/regions facet reflects the new location
 
 #### Scenario: Editing a non-manual job is rejected
 

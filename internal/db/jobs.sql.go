@@ -565,45 +565,53 @@ const updateManualJob = `-- name: UpdateManualJob :one
 WITH company_upsert AS (
     INSERT INTO companies (slug, name)
     SELECT $3, $2
-    WHERE $3 IS NOT NULL AND $3 <> ''
+    WHERE $3 <> ''
     ON CONFLICT (slug) DO UPDATE SET
         name       = EXCLUDED.name,
         updated_at = now()
 )
 UPDATE jobs
-SET title        = COALESCE($1, title),
-    company      = COALESCE($2, company),
-    company_slug = COALESCE($3, company_slug),
-    location     = COALESCE($4, location),
-    remote       = COALESCE($5, remote),
-    description  = COALESCE($6, description),
-    posted_at    = COALESCE($7, posted_at),
-    updated_by   = $8::bigint,
+SET title        = $1,
+    company      = $2,
+    company_slug = $3,
+    location     = $4,
+    remote       = $5,
+    description  = $6,
+    posted_at    = $7,
+    countries    = COALESCE($8::text[], '{}'),
+    regions      = COALESCE($9::text[], '{}'),
+    work_mode    = $10,
+    skills       = COALESCE($11::text[], '{}'),
+    updated_by   = $12::bigint,
     updated_at   = now()
-WHERE public_slug = $9 AND source = 'manual'
+WHERE public_slug = $13 AND source = 'manual'
 RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, created_by, updated_by
 `
 
 type UpdateManualJobParams struct {
-	Title       pgtype.Text        `json:"title"`
-	Company     pgtype.Text        `json:"company"`
-	CompanySlug pgtype.Text        `json:"company_slug"`
-	Location    pgtype.Text        `json:"location"`
-	Remote      pgtype.Bool        `json:"remote"`
-	Description pgtype.Text        `json:"description"`
+	Title       string             `json:"title"`
+	Company     string             `json:"company"`
+	CompanySlug string             `json:"company_slug"`
+	Location    string             `json:"location"`
+	Remote      bool               `json:"remote"`
+	Description string             `json:"description"`
 	PostedAt    pgtype.Timestamptz `json:"posted_at"`
+	Countries   []string           `json:"countries"`
+	Regions     []string           `json:"regions"`
+	WorkMode    string             `json:"work_mode"`
+	Skills      []string           `json:"skills"`
 	UpdatedBy   int64              `json:"updated_by"`
 	PublicSlug  string             `json:"public_slug"`
 }
 
 // Moderator edit of a hand-curated job, addressed by public_slug and scoped to
-// source = 'manual' so this path can never rewrite an ATS/telegram vacancy. Each
-// content field uses COALESCE(narg, column): a NULL arg leaves the column unchanged
-// (partial update). The source identity (url/external_id/public_slug) is deliberately
-// not updatable here. The company is upserted only when a new company_slug is supplied,
-// so "a company's jobs" stays resolvable. updated_by records the acting moderator.
-// Returns no row when the slug is missing or not a manual job (the caller maps that to
-// 404).
+// source = 'manual' so this path can never rewrite an ATS/telegram vacancy. The
+// partial merge (nil = unchanged) and facet re-derivation happen in the service; this
+// query writes the resulting full field set, so geography/skills/company_slug stay
+// consistent with the edited content. The source identity (url/external_id/public_slug)
+// is deliberately NOT updatable here. The company row is upserted when a slug is present,
+// so "a company's jobs" stays resolvable. updated_by records the acting moderator. Returns
+// no row when the slug is missing or not a manual job (the caller maps that to 404).
 func (q *Queries) UpdateManualJob(ctx context.Context, arg UpdateManualJobParams) (Job, error) {
 	row := q.db.QueryRow(ctx, updateManualJob,
 		arg.Title,
@@ -613,6 +621,10 @@ func (q *Queries) UpdateManualJob(ctx context.Context, arg UpdateManualJobParams
 		arg.Remote,
 		arg.Description,
 		arg.PostedAt,
+		arg.Countries,
+		arg.Regions,
+		arg.WorkMode,
+		arg.Skills,
 		arg.UpdatedBy,
 		arg.PublicSlug,
 	)

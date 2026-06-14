@@ -66,12 +66,23 @@ The geo/skills/slug derivation currently inline in `pipeline.normalizeJob` (call
 factored into a small helper so the manual write path derives identically. The manual path
 differs only in source identity (`source='manual'`, `external_id=url`, no board namespacing).
 
-### `UpdateManualJob` is scoped to `source='manual'`
+### Edit is load-merge-derive-write, scoped to `source='manual'`
 
-`UPDATE ... WHERE public_slug = $1 AND source = 'manual'` with `COALESCE($field, jobs.field)`
-for partial updates, returning the row. A slug that resolves to a non-manual (or missing) job
-returns no row → `404`. This is the security invariant: the moderator write path can never
-rewrite an ATS/Telegram vacancy, only hand-curated ones.
+`PATCH` is partial at the API, but the partial merge happens in the service, not in SQL:
+the service loads the manual job, overlays the supplied (nil-means-unchanged) fields, and
+**re-derives the deterministic facets** (geography, skills, company slug) from the merged
+content via the shared helper — so a location/description/company edit never leaves a stale
+facet (AI enrichment is the only facet not refreshed). The write is then a full-field
+`UPDATE ... WHERE public_slug = $1 AND source = 'manual'` returning the row; a slug that
+resolves to a non-manual (or missing) job returns no row → `404`. That `source = 'manual'`
+guard is the security invariant: the moderator write path can never rewrite an ATS/Telegram
+vacancy. The source identity (`url`/`external_id`/`public_slug`) is never recomputed, so the
+public slug stays stable across edits. The load-then-write is not wrapped in one transaction
+(low-frequency, single-actor edits; last-write-wins is acceptable).
+
+- **Alternative considered**: a `COALESCE($field, column)` partial `UPDATE` (no read). Rejected
+  because it cannot recompute the derived facets from the merged values, leaving geography/
+  skills inconsistent after an edit.
 
 ### Audit fields stay off the wire
 

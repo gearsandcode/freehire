@@ -200,13 +200,13 @@ type Querier interface {
 	// from the row's immutable fields, so recomputing and rewriting them is idempotent.
 	UpdateJobSlugs(ctx context.Context, arg UpdateJobSlugsParams) error
 	// Moderator edit of a hand-curated job, addressed by public_slug and scoped to
-	// source = 'manual' so this path can never rewrite an ATS/telegram vacancy. Each
-	// content field uses COALESCE(narg, column): a NULL arg leaves the column unchanged
-	// (partial update). The source identity (url/external_id/public_slug) is deliberately
-	// not updatable here. The company is upserted only when a new company_slug is supplied,
-	// so "a company's jobs" stays resolvable. updated_by records the acting moderator.
-	// Returns no row when the slug is missing or not a manual job (the caller maps that to
-	// 404).
+	// source = 'manual' so this path can never rewrite an ATS/telegram vacancy. The
+	// partial merge (nil = unchanged) and facet re-derivation happen in the service; this
+	// query writes the resulting full field set, so geography/skills/company_slug stay
+	// consistent with the edited content. The source identity (url/external_id/public_slug)
+	// is deliberately NOT updatable here. The company row is upserted when a slug is present,
+	// so "a company's jobs" stays resolvable. updated_by records the acting moderator. Returns
+	// no row when the slug is missing or not a manual job (the caller maps that to 404).
 	UpdateManualJob(ctx context.Context, arg UpdateManualJobParams) (Job, error)
 	// Single atomic write: upsert the company (only when the slug is non-empty,
 	// via the WHERE on the SELECT) and the job together, keeping the "one write =
