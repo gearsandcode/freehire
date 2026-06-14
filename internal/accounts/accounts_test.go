@@ -32,9 +32,9 @@ type linkResult struct {
 }
 
 type linkCall struct {
-	provider      string
+	provider       string
 	providerUserID string
-	email         string
+	email          string
 }
 
 func (f *fakeRepo) UserIDByIdentity(_ context.Context, provider, providerUserID string) (int64, error) {
