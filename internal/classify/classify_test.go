@@ -29,6 +29,12 @@ func TestParse(t *testing.T) {
 		{"Аналитик данных", "", "data_analytics"},
 		{"Тестировщик ПО", "", "qa"},
 		{"Дизайнер интерфейсов", "", "design"},
+		// Russian category words are inflected — the dictionary lists the common
+		// surface forms (whole-word match, no stemming), so these must resolve.
+		{"Мобильный разработчик", "", "mobile"},
+		{"Инженер по информационной безопасности", "", "security"},
+		{"Специалист по продажам", "", "sales"},
+		{"Специалист технической поддержки", "", "support"},
 		{"Lead Senior Engineer", "lead", ""},
 		{"Leading Solutions Architect", "", ""},
 		{"Reactor Operations Manager", "", "management"},
