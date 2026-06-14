@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /** Format an RFC3339 timestamp as a short local date; '' for null/invalid. */
-export function formatDate(ts: string | null): string {
+export function formatDate(ts: string | null | undefined): string {
   if (!ts) return '';
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return '';
@@ -27,7 +27,7 @@ const TIME_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
 /** Format an RFC3339 timestamp as a relative "N ago" label (e.g. "13 seconds
  *  ago", "2 days ago"); '' for null/invalid. How recently a job was posted is a
  *  key signal, so the list card shows it relative rather than as a bare date. */
-export function timeAgo(ts: string | null): string {
+export function timeAgo(ts: string | null | undefined): string {
   if (!ts) return '';
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return '';
