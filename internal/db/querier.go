@@ -158,6 +158,11 @@ type Querier interface {
 	// ATS provider set from the sources registry; <> ALL excludes them, so a new adapter
 	// never silently becomes a probe target. Closed jobs are skipped (already not open).
 	SelectOrphanLivenessCandidates(ctx context.Context, atsProviders []string) ([]SelectOrphanLivenessCandidatesRow, error)
+	// One-off backfill (cmd/backfill-class): rewrite the title-derived classification
+	// columns from the row's stored title. They are deterministic from `title`, so
+	// this is idempotent. updated_at is deliberately left untouched (like
+	// SetJobLocation) so a backfill does not churn every row's timestamp.
+	SetJobClassification(ctx context.Context, arg SetJobClassificationParams) error
 	// Targeted enrichment write used by the enrichment command: set only the payload
 	// and the provenance stamp, touching no raw source field. Kept separate from
 	// UpsertJob (the ingest full-upsert path) so ingest and enrichment stay decoupled.
