@@ -1,7 +1,7 @@
-## 1. Pin current behavior (characterization)
+## 1. Pin current behavior
 
-- [ ] 1.1 Add a handler-level characterization test that drives the current view/apply/save/unsave/track endpoints and captures the exact JSON body + status for representative cases: viewed-only, applied, saved, tracked (stage+notes), track stage-only, track notes-only, invalid stage (400), empty track body (400), unsave-when-absent (zero interaction), unknown slug (404).
-- [ ] 1.2 Run it against the current (pre-refactor) handler and confirm it passes — this is the green baseline the refactor must preserve.
+- [ ] 1.1 Confirm the existing `internal/handler/user_jobs_integration_test.go` (`//go:build integration`, real Postgres) covers the success-path wire shape (job_id + RFC3339/null timestamps, save/unsave contract, 404). It is the end-to-end no-drift guard; record that it must pass via `go test -tags=integration ./internal/handler/` before merge (needs Docker). Do NOT rewrite it.
+- [ ] 1.2 After the mapping function is extracted (task 4.x), add a DB-free unit test pinning `Interaction → interactionResponse` JSON: exact field names, RFC3339 timestamp strings, and `null` for absent viewed/saved/applied/stage/notes. (Sequenced here for context; implement once the mapping exists.)
 
 ## 2. jobtracking package — contract and rules (TDD, fake repo)
 
@@ -25,6 +25,6 @@
 
 ## 5. Verify
 
-- [ ] 5.1 Run the characterization test from 1.1 against the refactored handler — must be byte-identical (no wire change).
+- [ ] 5.1 Run `go test -tags=integration ./internal/handler/` (real Postgres) and confirm the user_jobs wire contract from 1.1 stays green. If Docker is unavailable in the dev loop, note that this must pass in CI before merge; the mapping unit test (1.2) is the in-loop guard.
 - [ ] 5.2 `go build ./...`, `go vet ./...`, `go test ./...` all green.
 - [ ] 5.3 Self-review: confirm no `pgtype`/`pgx`/`fiber` import in `internal/jobtracking`, and no remaining business rule (stage check, partial-update, idempotency, slug resolution) in `user_jobs.go`.
