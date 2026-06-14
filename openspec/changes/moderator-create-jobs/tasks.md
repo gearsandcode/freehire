@@ -1,10 +1,10 @@
 ## 1. Schema & DB access
 
-- [ ] 1.1 Add migration `0017_jobs_moderation.sql`: `users.role` (TEXT NOT NULL DEFAULT 'user', CHECK in user/moderator/admin), `jobs.created_by` + `jobs.updated_by` (BIGINT REFERENCES users(id), nullable)
-- [ ] 1.2 Surface `role` on the user read queries (`GetUserByID`, `GetUserByEmail`) in `queries/users.sql`
-- [ ] 1.3 Add `UpsertManualJob :one` to `queries/jobs.sql`: fixed `source='manual'`, writes `created_by` on INSERT and `updated_by` on `ON CONFLICT (source, external_id) DO UPDATE`; enqueue stays a separate call
-- [ ] 1.4 Add `UpdateManualJob :one` to `queries/jobs.sql`: partial update by `WHERE public_slug = $1 AND source = 'manual'` using `COALESCE($field, jobs.field)`, set `updated_by` + `updated_at = now()`, RETURNING the row
-- [ ] 1.5 Run `make sqlc` and commit the regenerated `internal/db`
+- [x] 1.1 Add migration `0017_jobs_moderation.sql`: `users.role` (TEXT NOT NULL DEFAULT 'user', CHECK in user/moderator/admin), `jobs.created_by` + `jobs.updated_by` (BIGINT REFERENCES users(id), nullable)
+- [x] 1.2 Add a slim `GetUserRole :one` query in `queries/users.sql` (role by id) for the hot middleware path — leaves the existing `GetUserByID` row shape untouched
+- [x] 1.3 Add `UpsertManualJob :one` to `queries/jobs.sql`: fixed `source='manual'`, writes `created_by` on INSERT and `updated_by` on `ON CONFLICT (source, external_id) DO UPDATE`; enqueue stays a separate call
+- [x] 1.4 Add `UpdateManualJob :one` to `queries/jobs.sql`: partial update by `WHERE public_slug = $1 AND source = 'manual'` using `COALESCE($field, jobs.field)`, set `updated_by` + `updated_at = now()`, RETURNING the row
+- [x] 1.5 Run `make sqlc` and commit the regenerated `internal/db`
 
 ## 2. Shared derivation helper
 

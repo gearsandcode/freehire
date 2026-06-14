@@ -102,6 +102,81 @@ ON CONFLICT (source, external_id) DO UPDATE SET
     updated_at   = now()
 RETURNING *;
 
+-- name: UpsertManualJob :one
+-- Moderator-authored write: the manual-source analogue of UpsertJob. source is fixed
+-- to 'manual' and the dedup key is (source, external_id = url), so re-POSTing the same
+-- URL updates the row idempotently instead of duplicating it. created_by is stamped
+-- once at insert; updated_by is (re)written on the conflict update. Like UpsertJob,
+-- public_slug is minted once and never rewritten, and the enrichment columns are left
+-- to SetJobEnrichment. The conflict reopens a previously closed posting (closed_at =
+-- NULL) since the moderator is re-asserting it.
+WITH company_upsert AS (
+    INSERT INTO companies (slug, name)
+    SELECT sqlc.arg(company_slug), sqlc.arg(company)
+    WHERE sqlc.arg(company_slug) <> ''
+    ON CONFLICT (slug) DO UPDATE SET
+        name       = EXCLUDED.name,
+        updated_at = now()
+)
+INSERT INTO jobs (
+    source, external_id, url, title, company, company_slug, location, remote, description, posted_at,
+    public_slug, countries, regions, work_mode, skills, created_by
+) VALUES (
+    'manual', sqlc.arg(external_id), sqlc.arg(url), sqlc.arg(title),
+    sqlc.arg(company), sqlc.arg(company_slug), sqlc.arg(location), sqlc.arg(remote),
+    sqlc.arg(description), sqlc.arg(posted_at),
+    sqlc.arg(public_slug),
+    COALESCE(sqlc.arg(countries)::text[], '{}'), COALESCE(sqlc.arg(regions)::text[], '{}'),
+    sqlc.arg(work_mode), COALESCE(sqlc.arg(skills)::text[], '{}'), sqlc.arg(created_by)::bigint
+)
+ON CONFLICT (source, external_id) DO UPDATE SET
+    url          = EXCLUDED.url,
+    title        = EXCLUDED.title,
+    company      = EXCLUDED.company,
+    company_slug = EXCLUDED.company_slug,
+    location     = EXCLUDED.location,
+    remote       = EXCLUDED.remote,
+    description  = EXCLUDED.description,
+    posted_at    = EXCLUDED.posted_at,
+    countries    = EXCLUDED.countries,
+    regions      = EXCLUDED.regions,
+    work_mode    = EXCLUDED.work_mode,
+    skills       = EXCLUDED.skills,
+    updated_by   = sqlc.arg(updated_by)::bigint,
+    closed_at    = NULL,
+    updated_at   = now()
+RETURNING *;
+
+-- name: UpdateManualJob :one
+-- Moderator edit of a hand-curated job, addressed by public_slug and scoped to
+-- source = 'manual' so this path can never rewrite an ATS/telegram vacancy. Each
+-- content field uses COALESCE(narg, column): a NULL arg leaves the column unchanged
+-- (partial update). The source identity (url/external_id/public_slug) is deliberately
+-- not updatable here. The company is upserted only when a new company_slug is supplied,
+-- so "a company's jobs" stays resolvable. updated_by records the acting moderator.
+-- Returns no row when the slug is missing or not a manual job (the caller maps that to
+-- 404).
+WITH company_upsert AS (
+    INSERT INTO companies (slug, name)
+    SELECT sqlc.narg(company_slug), sqlc.narg(company)
+    WHERE sqlc.narg(company_slug) IS NOT NULL AND sqlc.narg(company_slug) <> ''
+    ON CONFLICT (slug) DO UPDATE SET
+        name       = EXCLUDED.name,
+        updated_at = now()
+)
+UPDATE jobs
+SET title        = COALESCE(sqlc.narg(title), title),
+    company      = COALESCE(sqlc.narg(company), company),
+    company_slug = COALESCE(sqlc.narg(company_slug), company_slug),
+    location     = COALESCE(sqlc.narg(location), location),
+    remote       = COALESCE(sqlc.narg(remote), remote),
+    description  = COALESCE(sqlc.narg(description), description),
+    posted_at    = COALESCE(sqlc.narg(posted_at), posted_at),
+    updated_by   = sqlc.arg(updated_by)::bigint,
+    updated_at   = now()
+WHERE public_slug = sqlc.arg(public_slug) AND source = 'manual'
+RETURNING *;
+
 -- name: CloseUnseenJobs :execrows
 -- Post-ingest sweep (see job-lifecycle spec): close every open job of ONE source not
 -- seen since the cutoff. Scoped by source because ingest runs per provider — a

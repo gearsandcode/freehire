@@ -64,6 +64,8 @@ type Job struct {
 	WorkMode          string             `json:"work_mode"`
 	LivenessStrikes   int32              `json:"liveness_strikes"`
 	Skills            []string           `json:"skills"`
+	CreatedBy         pgtype.Int8        `json:"created_by"`
+	UpdatedBy         pgtype.Int8        `json:"updated_by"`
 }
 
 type TelegramPost struct {
@@ -85,6 +87,7 @@ type User struct {
 	Email        string             `json:"email"`
 	PasswordHash pgtype.Text        `json:"password_hash"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	Role         string             `json:"role"`
 }
 
 type UserIdentity struct {
