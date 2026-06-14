@@ -30,8 +30,8 @@
 
 ## 6. Integration tests (`-tags=integration`, testcontainers)
 
-- [ ] 6.1 `UpsertManualJob`: idempotent on URL (re-POST updates, no duplicate), sets `created_by` on insert and `updated_by` on conflict, enqueues an outbox row
-- [ ] 6.2 `UpdateManualJob`: updates a manual job; leaves a non-manual job untouched (returns no row → 404 path)
+- [x] 6.1 `UpsertManualJob`: idempotent on URL (re-POST updates, no duplicate), sets `created_by` on insert and `updated_by` on conflict, enqueues an outbox row
+- [x] 6.2 `UpdateManualJob`: updates a manual job; leaves a non-manual job untouched (returns no row → 404 path)
 
 ## 7. Verify & finish
 
