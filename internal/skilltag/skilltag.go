@@ -97,10 +97,7 @@ func byteAt(s string, i int) byte {
 }
 
 func alnumAt(s string, i int) bool {
-	if i < 0 || i >= len(s) {
-		return false
-	}
-	c := s[i]
+	c := byteAt(s, i)
 	return c >= 'a' && c <= 'z' || c >= '0' && c <= '9'
 }
 
