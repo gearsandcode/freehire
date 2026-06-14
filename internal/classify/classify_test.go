@@ -38,6 +38,10 @@ func TestParse(t *testing.T) {
 		{"Lead Senior Engineer", "lead", ""},
 		{"Leading Solutions Architect", "", ""},
 		{"Reactor Operations Manager", "", "management"},
+		// A functional prefix wins over a bare "manager" (consistent precedence).
+		{"Sales Manager", "", "sales"},
+		{"Support Manager", "", "support"},
+		{"Operations Manager", "", "management"},
 		{"Cat Herder", "", ""},
 		{"", "", ""},
 	}

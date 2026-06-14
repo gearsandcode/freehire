@@ -55,10 +55,14 @@ var categoryOrder = []string{
 	"designer", "design", "ux", "ui", "дизайнер", "дизайн",
 	"product manager", "product owner", "продакт", "продукт-менеджер",
 	"project manager", "delivery manager", "проджект", "проект-менеджер",
-	"engineering manager", "team manager", "manager", "менеджер",
+	"engineering manager", "team manager",
 	"marketing", "smm", "маркетолог", "маркетинг",
 	"sales", "account executive", "продажи", "продаж", "продажам",
 	"support", "поддержка", "поддержки", "техподдержка", "техподдержки",
+	// Bare "manager" resolves last so a functional prefix wins ("Sales Manager"
+	// → sales, "Support Manager" → support); a manager title with no function
+	// ("Operations Manager") falls through to management.
+	"manager", "менеджер",
 	"analyst", "аналитик",
 }
 
