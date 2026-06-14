@@ -207,3 +207,17 @@ func TestRunCountsUnknownProviderAsFailed(t *testing.T) {
 		t.Errorf("stats = %+v, want Failed=1 Ingested=0", stats)
 	}
 }
+
+func TestNormalizeJobDerivesSkills(t *testing.T) {
+	got := normalizeJob(
+		sources.CompanyEntry{Provider: "greenhouse", Board: "acme"},
+		sources.Job{
+			Title: "Backend Engineer", Company: "Acme", ExternalID: "1",
+			Description: "<p>Build services in Golang with PostgreSQL and Kubernetes.</p>",
+		},
+	)
+	want := []string{"go", "kubernetes", "postgresql"}
+	if !reflect.DeepEqual(got.Skills, want) {
+		t.Fatalf("Skills = %#v, want %#v", got.Skills, want)
+	}
+}
