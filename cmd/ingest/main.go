@@ -28,9 +28,10 @@ import (
 func main() {
 	cfg := config.Load()
 
-	// The board file is one provider's list (sources/<provider>.yml); the provider is
-	// its file name. Accept it as the first argument (cron passes it per provider) or
-	// via SOURCES_FILE.
+	// The board file is usually one provider's list (sources/<provider>.yml, provider =
+	// file name), but an entry may name its own provider, so it may be a mixed file
+	// (sources/custom.yml). Accept it as the first argument (cron passes the file) or via
+	// SOURCES_FILE.
 	path := os.Getenv("SOURCES_FILE")
 	if len(os.Args) > 1 && os.Args[1] != "" {
 		path = os.Args[1]
@@ -69,7 +70,7 @@ func main() {
 
 	total := runStats.Total()
 	log.Printf("ingest done: file=%s providers=%d ingested=%d failed=%d skipped=%d",
-		sourceCfg.Provider, len(runStats), total.Ingested, total.Failed, total.Skipped)
+		path, len(runStats), total.Ingested, total.Failed, total.Skipped)
 
 	// Post-run sweep (job-lifecycle spec): per provider, close that provider's open jobs
 	// unseen for the whole grace window. Scoped per provider so one provider's run never
