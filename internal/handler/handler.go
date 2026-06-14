@@ -84,7 +84,7 @@ func Register(app *fiber.App, pool *pgxpool.Pool, frontendOrigin, jwtSecret stri
 		oauth:          oauthProviders,
 		frontendOrigin: frontendOrigin,
 		tracking:       jobtracking.New(jobtracking.NewQueriesRepository(queries)),
-		accounts:       accounts.New(accounts.NewQueriesRepository(queries, pool)),
+		accounts:       accounts.New(accounts.NewQueriesRepository(queries, pool), authHasher{}),
 	}
 	// Assign only when configured: a nil *search.Client wrapped in the searcher
 	// interface would be a non-nil interface and defeat the nil check.
