@@ -3,6 +3,7 @@ package accounts
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -99,22 +100,57 @@ func (r *QueriesRepository) LinkOrCreateByEmail(ctx context.Context, provider, p
 	return userID, nil
 }
 
-// CreateUser, UserByEmail, and UserByID are implemented in a later task.
-// The stubs below keep the compile-time interface assertion green.
-
-// CreateUser is not yet implemented on QueriesRepository.
-func (r *QueriesRepository) CreateUser(_ context.Context, _, _ string) (User, error) {
-	panic("accounts.QueriesRepository.CreateUser: not yet implemented")
+// CreateUser inserts a new account and returns it. Returns ErrEmailTaken on a
+// unique-constraint violation.
+func (r *QueriesRepository) CreateUser(ctx context.Context, email, passwordHash string) (User, error) {
+	row, err := r.q.CreateUser(ctx, db.CreateUserParams{
+		Email:        email,
+		PasswordHash: pgtype.Text{String: passwordHash, Valid: true},
+	})
+	if isUniqueViolation(err) {
+		return User{}, ErrEmailTaken
+	}
+	if err != nil {
+		return User{}, err
+	}
+	return User{ID: row.ID, Email: row.Email, CreatedAt: timePtr(row.CreatedAt)}, nil
 }
 
-// UserByEmail is not yet implemented on QueriesRepository.
-func (r *QueriesRepository) UserByEmail(_ context.Context, _ string) (User, string, bool, error) {
-	panic("accounts.QueriesRepository.UserByEmail: not yet implemented")
+// UserByEmail looks up the account with the given (already-normalised) email.
+// Returns ErrUserNotFound when absent. hasPassword is true when a non-null
+// password hash is stored.
+func (r *QueriesRepository) UserByEmail(ctx context.Context, email string) (User, string, bool, error) {
+	row, err := r.q.GetUserByEmail(ctx, email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, "", false, ErrUserNotFound
+	}
+	if err != nil {
+		return User{}, "", false, err
+	}
+	u := User{ID: row.ID, Email: row.Email, CreatedAt: timePtr(row.CreatedAt)}
+	return u, row.PasswordHash.String, row.PasswordHash.Valid, nil
 }
 
-// UserByID is not yet implemented on QueriesRepository.
-func (r *QueriesRepository) UserByID(_ context.Context, _ int64) (User, error) {
-	panic("accounts.QueriesRepository.UserByID: not yet implemented")
+// UserByID returns the user with the given id, or ErrUserNotFound when absent.
+func (r *QueriesRepository) UserByID(ctx context.Context, id int64) (User, error) {
+	row, err := r.q.GetUserByID(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrUserNotFound
+	}
+	if err != nil {
+		return User{}, err
+	}
+	return User{ID: row.ID, Email: row.Email, CreatedAt: timePtr(row.CreatedAt)}, nil
+}
+
+// timePtr converts a pgtype.Timestamptz to a *time.Time, returning nil when
+// the value is NULL.
+func timePtr(ts pgtype.Timestamptz) *time.Time {
+	if !ts.Valid {
+		return nil
+	}
+	t := ts.Time
+	return &t
 }
 
 // isUniqueViolation reports whether err is a PostgreSQL unique-constraint
