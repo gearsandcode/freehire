@@ -1,28 +1,33 @@
 // The application-stage vocabulary, in pipeline order (active stages then
-// terminal). SOURCE OF TRUTH is the Go `validStages` set in
-// internal/handler/user_jobs.go — keep this in sync when it changes. Drift is not
-// fatal: humanizeStage renders an unknown value as a readable label.
+// terminal). STAGE_VALUES is generated from the Go validStages set in
+// internal/handler/user_jobs.go via cmd/gen-contracts. Drift is not fatal:
+// humanizeStage renders an unknown value as a readable label.
+
+import { STAGE_VALUES } from './generated/contracts';
 
 export interface StageOption {
   value: string;
   label: string;
 }
 
-export const STAGES: StageOption[] = [
-  { value: 'applied', label: 'Applied' },
-  { value: 'screening', label: 'Screening' },
-  { value: 'responded', label: 'Responded' },
-  { value: 'interview', label: 'Interview' },
-  { value: 'offer', label: 'Offer' },
-  { value: 'accepted', label: 'Accepted' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'withdrawn', label: 'Withdrawn' },
-];
-
-const LABELS = new Map(STAGES.map((s) => [s.value, s.label]));
+const STAGE_LABELS: Record<string, string> = {
+  applied: 'Applied',
+  screening: 'Screening',
+  responded: 'Responded',
+  interview: 'Interview',
+  offer: 'Offer',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  withdrawn: 'Withdrawn',
+};
 
 /** A human label for a stage value; the value itself (title-cased fallback) when
  *  not in the known vocabulary. */
 export function humanizeStage(stage: string): string {
-  return LABELS.get(stage) ?? stage.charAt(0).toUpperCase() + stage.slice(1);
+  return STAGE_LABELS[stage] ?? stage.charAt(0).toUpperCase() + stage.slice(1);
 }
+
+export const STAGES: StageOption[] = STAGE_VALUES.map((value) => ({
+  value,
+  label: STAGE_LABELS[value] ?? humanizeStage(value),
+}));
