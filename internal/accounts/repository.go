@@ -99,6 +99,24 @@ func (r *QueriesRepository) LinkOrCreateByEmail(ctx context.Context, provider, p
 	return userID, nil
 }
 
+// CreateUser, UserByEmail, and UserByID are implemented in a later task.
+// The stubs below keep the compile-time interface assertion green.
+
+// CreateUser is not yet implemented on QueriesRepository.
+func (r *QueriesRepository) CreateUser(_ context.Context, _, _ string) (User, error) {
+	panic("accounts.QueriesRepository.CreateUser: not yet implemented")
+}
+
+// UserByEmail is not yet implemented on QueriesRepository.
+func (r *QueriesRepository) UserByEmail(_ context.Context, _ string) (User, string, bool, error) {
+	panic("accounts.QueriesRepository.UserByEmail: not yet implemented")
+}
+
+// UserByID is not yet implemented on QueriesRepository.
+func (r *QueriesRepository) UserByID(_ context.Context, _ int64) (User, error) {
+	panic("accounts.QueriesRepository.UserByID: not yet implemented")
+}
+
 // isUniqueViolation reports whether err is a PostgreSQL unique-constraint
 // violation (SQLSTATE 23505).
 func isUniqueViolation(err error) bool {

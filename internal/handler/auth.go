@@ -138,6 +138,13 @@ func (h *Handler) Me(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": userResponse{ID: user.ID, Email: user.Email, CreatedAt: user.CreatedAt}})
 }
 
+// authHasher adapts the auth package's bcrypt helpers to the accounts.PasswordHasher
+// interface, keeping the accounts package free of the auth/fiber dependency graph.
+type authHasher struct{}
+
+func (authHasher) Hash(plain string) (string, error) { return auth.HashPassword(plain) }
+func (authHasher) Check(hash, plain string) error     { return auth.CheckPassword(hash, plain) }
+
 // normalizeEmail validates and lowercases an email address. Lowercasing matches
 // the case-insensitive unique index on users(lower(email)).
 func normalizeEmail(raw string) (string, error) {
