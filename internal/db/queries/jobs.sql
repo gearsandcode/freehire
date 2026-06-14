@@ -114,6 +114,40 @@ WHERE closed_at IS NULL
   AND source = sqlc.arg(source)
   AND last_seen_at < sqlc.arg(cutoff);
 
+-- name: SelectOrphanLivenessCandidates :many
+-- Orphan-job liveness (probe-orphan-job-liveness): open jobs whose source is NOT a
+-- registered ATS board provider — the sources no ingest run re-crawls and the sweep
+-- therefore never closes (telegram, habr_career, geekjob, …). The caller passes the
+-- ATS provider set from the sources registry; <> ALL excludes them, so a new adapter
+-- never silently becomes a probe target. Closed jobs are skipped (already not open).
+SELECT id, source, url, public_slug, liveness_strikes
+FROM jobs
+WHERE closed_at IS NULL
+  AND source <> ALL(sqlc.arg(ats_providers)::text[]);
+
+-- name: MarkLivenessExpired :one
+-- Record one expired probe: increment the strike counter and, in the same write,
+-- close the job (closed_at) once it reaches the threshold the caller owns — the
+-- two-strike grace that absorbs a transient death signal. Returns the new strike
+-- count and closed_at so the worker can log the outcome.
+UPDATE jobs
+SET liveness_strikes = liveness_strikes + 1,
+    closed_at = CASE
+        WHEN liveness_strikes + 1 >= sqlc.arg(threshold) THEN now()
+        ELSE closed_at
+    END,
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+RETURNING id, liveness_strikes, closed_at;
+
+-- name: ResetLivenessStrikes :exec
+-- A healthy (not-expired) probe clears any accumulated strikes, so only CONSECUTIVE
+-- expired probes can close a job. Guarded to the non-zero case so probing an
+-- already-clean job does not churn the row.
+UPDATE jobs
+SET liveness_strikes = 0
+WHERE id = sqlc.arg(id) AND liveness_strikes <> 0;
+
 -- name: UpdateJobSlugs :exec
 -- One-off backfill for a deliberate slug-builder change (see the UpsertJob note on
 -- why slugs are otherwise immutable). public_slug/company_slug are deterministic

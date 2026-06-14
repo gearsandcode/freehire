@@ -114,6 +114,11 @@ type Querier interface {
 	// seeds stage='applied' only when the stage is unset (an advanced stage survives
 	// a re-apply, via COALESCE).
 	MarkJobApplied(ctx context.Context, arg MarkJobAppliedParams) (UserJob, error)
+	// Record one expired probe: increment the strike counter and, in the same write,
+	// close the job (closed_at) once it reaches the threshold the caller owns — the
+	// two-strike grace that absorbs a transient death signal. Returns the new strike
+	// count and closed_at so the worker can log the outcome.
+	MarkLivenessExpired(ctx context.Context, arg MarkLivenessExpiredParams) (MarkLivenessExpiredRow, error)
 	// Completion: the post was processed (jobs written, or no vacancy found). Run in
 	// the same transaction as the extracted jobs' UpsertJob calls.
 	MarkTelegramPostExtracted(ctx context.Context, arg MarkTelegramPostExtractedParams) error
@@ -131,9 +136,19 @@ type Querier interface {
 	// left in place — its expiry gates the retry to a later run and doubles as the
 	// crash reaper, so a failed post is never reprocessed within the same run.
 	RecordTelegramPostFailure(ctx context.Context, arg RecordTelegramPostFailureParams) (RecordTelegramPostFailureRow, error)
+	// A healthy (not-expired) probe clears any accumulated strikes, so only CONSECUTIVE
+	// expired probes can close a job. Guarded to the non-zero case so probing an
+	// already-clean job does not churn the row.
+	ResetLivenessStrikes(ctx context.Context, id int64) error
 	// Save (bookmark) a job for a user. Idempotent and independent of a prior view:
 	// it inserts the row (viewed_at defaults) or refreshes saved_at in place.
 	SaveJob(ctx context.Context, arg SaveJobParams) (UserJob, error)
+	// Orphan-job liveness (probe-orphan-job-liveness): open jobs whose source is NOT a
+	// registered ATS board provider — the sources no ingest run re-crawls and the sweep
+	// therefore never closes (telegram, habr_career, geekjob, …). The caller passes the
+	// ATS provider set from the sources registry; <> ALL excludes them, so a new adapter
+	// never silently becomes a probe target. Closed jobs are skipped (already not open).
+	SelectOrphanLivenessCandidates(ctx context.Context, atsProviders []string) ([]SelectOrphanLivenessCandidatesRow, error)
 	// Targeted enrichment write used by the enrichment command: set only the payload
 	// and the provenance stamp, touching no raw source field. Kept separate from
 	// UpsertJob (the ingest full-upsert path) so ingest and enrichment stay decoupled.
