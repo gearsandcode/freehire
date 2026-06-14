@@ -16,6 +16,24 @@ def test_provider_hosts_subset_of_validators():
     assert d.PROVIDER_HOSTS["ashby"] == "jobs.ashbyhq.com"
 
 
+def test_parse_ddg_html_decodes_uddg_redirect():
+    html = (
+        '<a class="result__a" '
+        'href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fjobs.ashbyhq.com%2FClipbook%2Fabc&rut=x">'
+        'Clipbook</a>'
+    )
+    urls = d.parse_ddg_html(html)
+    assert "https://jobs.ashbyhq.com/Clipbook/abc" in urls
+
+
+def test_parse_ddg_html_passes_decoded_url_to_extract_slugs():
+    html = '<a href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fjobs.ashbyhq.com%2FClipbook&rut=x">x</a>'
+    slugs = set()
+    for url in d.parse_ddg_html(html):
+        slugs |= ats_boards.extract_slugs(url)
+    assert ("ashby", "Clipbook") in slugs
+
+
 def _run():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
