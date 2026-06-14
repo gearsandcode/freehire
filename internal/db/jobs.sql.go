@@ -80,7 +80,7 @@ func (q *Queries) EnqueueJobEnrichment(ctx context.Context, arg EnqueueJobEnrich
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, skills
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills
 FROM jobs
 WHERE id = $1
 `
@@ -111,13 +111,14 @@ func (q *Queries) GetJob(ctx context.Context, id int64) (Job, error) {
 		&i.Countries,
 		&i.Regions,
 		&i.WorkMode,
+		&i.LivenessStrikes,
 		&i.Skills,
 	)
 	return i, err
 }
 
 const getJobBySlug = `-- name: GetJobBySlug :one
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, skills
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills
 FROM jobs
 WHERE public_slug = $1
 `
@@ -148,6 +149,7 @@ func (q *Queries) GetJobBySlug(ctx context.Context, publicSlug string) (Job, err
 		&i.Countries,
 		&i.Regions,
 		&i.WorkMode,
+		&i.LivenessStrikes,
 		&i.Skills,
 	)
 	return i, err
@@ -171,7 +173,7 @@ func (q *Queries) GetJobIDBySlug(ctx context.Context, publicSlug string) (int64,
 }
 
 const listJobs = `-- name: ListJobs :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, skills
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills
 FROM jobs
 WHERE closed_at IS NULL
 ORDER BY created_at DESC, id DESC
@@ -218,6 +220,7 @@ func (q *Queries) ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, erro
 			&i.Countries,
 			&i.Regions,
 			&i.WorkMode,
+			&i.LivenessStrikes,
 			&i.Skills,
 		); err != nil {
 			return nil, err
@@ -231,7 +234,7 @@ func (q *Queries) ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, erro
 }
 
 const listJobsByCompany = `-- name: ListJobsByCompany :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, skills
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills
 FROM jobs
 WHERE company_slug = $1 AND closed_at IS NULL
 ORDER BY created_at DESC, id DESC
@@ -276,6 +279,7 @@ func (q *Queries) ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyPa
 			&i.Countries,
 			&i.Regions,
 			&i.WorkMode,
+			&i.LivenessStrikes,
 			&i.Skills,
 		); err != nil {
 			return nil, err
@@ -289,7 +293,7 @@ func (q *Queries) ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyPa
 }
 
 const listJobsByIDAfter = `-- name: ListJobsByIDAfter :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, skills
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills
 FROM jobs
 WHERE id > $1
 ORDER BY id
@@ -336,7 +340,102 @@ func (q *Queries) ListJobsByIDAfter(ctx context.Context, arg ListJobsByIDAfterPa
 			&i.Countries,
 			&i.Regions,
 			&i.WorkMode,
+			&i.LivenessStrikes,
 			&i.Skills,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markLivenessExpired = `-- name: MarkLivenessExpired :one
+UPDATE jobs
+SET liveness_strikes = liveness_strikes + 1,
+    closed_at = CASE
+        WHEN liveness_strikes + 1 >= $1 THEN now()
+        ELSE closed_at
+    END,
+    updated_at = now()
+WHERE id = $2
+RETURNING id, liveness_strikes, closed_at
+`
+
+type MarkLivenessExpiredParams struct {
+	Threshold int32 `json:"threshold"`
+	ID        int64 `json:"id"`
+}
+
+type MarkLivenessExpiredRow struct {
+	ID              int64              `json:"id"`
+	LivenessStrikes int32              `json:"liveness_strikes"`
+	ClosedAt        pgtype.Timestamptz `json:"closed_at"`
+}
+
+// Record one expired probe: increment the strike counter and, in the same write,
+// close the job (closed_at) once it reaches the threshold the caller owns — the
+// two-strike grace that absorbs a transient death signal. Returns the new strike
+// count and closed_at so the worker can log the outcome.
+func (q *Queries) MarkLivenessExpired(ctx context.Context, arg MarkLivenessExpiredParams) (MarkLivenessExpiredRow, error) {
+	row := q.db.QueryRow(ctx, markLivenessExpired, arg.Threshold, arg.ID)
+	var i MarkLivenessExpiredRow
+	err := row.Scan(&i.ID, &i.LivenessStrikes, &i.ClosedAt)
+	return i, err
+}
+
+const resetLivenessStrikes = `-- name: ResetLivenessStrikes :exec
+UPDATE jobs
+SET liveness_strikes = 0
+WHERE id = $1 AND liveness_strikes <> 0
+`
+
+// A healthy (not-expired) probe clears any accumulated strikes, so only CONSECUTIVE
+// expired probes can close a job. Guarded to the non-zero case so probing an
+// already-clean job does not churn the row.
+func (q *Queries) ResetLivenessStrikes(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, resetLivenessStrikes, id)
+	return err
+}
+
+const selectOrphanLivenessCandidates = `-- name: SelectOrphanLivenessCandidates :many
+SELECT id, source, url, public_slug, liveness_strikes
+FROM jobs
+WHERE closed_at IS NULL
+  AND source <> ALL($1::text[])
+`
+
+type SelectOrphanLivenessCandidatesRow struct {
+	ID              int64  `json:"id"`
+	Source          string `json:"source"`
+	URL             string `json:"url"`
+	PublicSlug      string `json:"public_slug"`
+	LivenessStrikes int32  `json:"liveness_strikes"`
+}
+
+// Orphan-job liveness (probe-orphan-job-liveness): open jobs whose source is NOT a
+// registered ATS board provider — the sources no ingest run re-crawls and the sweep
+// therefore never closes (telegram, habr_career, geekjob, …). The caller passes the
+// ATS provider set from the sources registry; <> ALL excludes them, so a new adapter
+// never silently becomes a probe target. Closed jobs are skipped (already not open).
+func (q *Queries) SelectOrphanLivenessCandidates(ctx context.Context, atsProviders []string) ([]SelectOrphanLivenessCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, selectOrphanLivenessCandidates, atsProviders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SelectOrphanLivenessCandidatesRow{}
+	for rows.Next() {
+		var i SelectOrphanLivenessCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Source,
+			&i.URL,
+			&i.PublicSlug,
+			&i.LivenessStrikes,
 		); err != nil {
 			return nil, err
 		}
@@ -489,7 +588,7 @@ ON CONFLICT (source, external_id) DO UPDATE SET
     last_seen_at = now(),
     closed_at    = NULL,
     updated_at   = now()
-RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, skills
+RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills
 `
 
 type UpsertJobParams struct {
@@ -566,6 +665,7 @@ func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) (Job, erro
 		&i.Countries,
 		&i.Regions,
 		&i.WorkMode,
+		&i.LivenessStrikes,
 		&i.Skills,
 	)
 	return i, err
