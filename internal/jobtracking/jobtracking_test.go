@@ -64,7 +64,7 @@ func (f *fakeRepo) TrackJob(_ context.Context, _, _ int64, stage, notes *string)
 }
 
 // helpers
-func strPtr(s string) *string { return &s }
+func strPtr(s string) *string     { return &s }
 func tPtr(t time.Time) *time.Time { return &t }
 
 func ctx() context.Context { return context.Background() }
