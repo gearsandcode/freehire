@@ -75,6 +75,30 @@ func TestCreate_DerivesAndPersists(t *testing.T) {
 	if got.CreatedBy != 7 || got.UpdatedBy != 7 {
 		t.Errorf("audit = created %d / updated %d, want both 7", got.CreatedBy, got.UpdatedBy)
 	}
+	if got.Source != "manual" {
+		t.Errorf("Source = %q, want manual (default when none given)", got.Source)
+	}
+}
+
+func TestCreate_SourceIsRecordedAndSlugsFromIt(t *testing.T) {
+	repo := &fakeRepo{}
+	const url = "https://www.workatastartup.com/jobs/96572"
+	_, err := moderation.New(repo).Create(context.Background(), 7, moderation.CreateInput{
+		URL:     url,
+		Source:  "workatastartup",
+		Title:   "Senior Frontend Engineer",
+		Company: "Dalus",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if repo.created.Source != "workatastartup" {
+		t.Errorf("Source = %q, want workatastartup", repo.created.Source)
+	}
+	// The public slug is minted from the real source, not the literal "manual".
+	if want := normalize.JobSlug("Senior Frontend Engineer", "Dalus", "workatastartup", url); repo.created.PublicSlug != want {
+		t.Errorf("PublicSlug = %q, want %q", repo.created.PublicSlug, want)
+	}
 }
 
 func TestCreate_ValidationRejects(t *testing.T) {

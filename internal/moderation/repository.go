@@ -56,8 +56,8 @@ func (r *QueriesRepository) Create(ctx context.Context, p db.UpsertManualJobPara
 }
 
 // BySlug loads a job by its public slug, returning ErrJobNotFound when no job matches or
-// the matched job is not a manual one — so the edit path can never touch an ATS/telegram
-// vacancy.
+// the matched job was not moderator-authored (created_by IS NULL) — so the edit path can
+// never touch an automated-source (ATS/telegram) vacancy, whatever its declared source.
 func (r *QueriesRepository) BySlug(ctx context.Context, slug string) (db.Job, error) {
 	job, err := r.q.GetJobBySlug(ctx, slug)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -66,14 +66,15 @@ func (r *QueriesRepository) BySlug(ctx context.Context, slug string) (db.Job, er
 	if err != nil {
 		return db.Job{}, err
 	}
-	if job.Source != manualSource {
+	if !job.CreatedBy.Valid {
 		return db.Job{}, ErrJobNotFound
 	}
 	return job, nil
 }
 
-// Update writes the full resulting row for a manual job. The query's source scope means a
-// missing or non-manual slug affects no row (ErrNoRows → ErrJobNotFound).
+// Update writes the full resulting row for a moderator-authored job. The query's
+// created_by scope means a missing or non-moderator-created slug affects no row
+// (ErrNoRows → ErrJobNotFound).
 func (r *QueriesRepository) Update(ctx context.Context, p db.UpdateManualJobParams) (db.Job, error) {
 	job, err := r.q.UpdateManualJob(ctx, p)
 	if errors.Is(err, pgx.ErrNoRows) {

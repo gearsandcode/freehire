@@ -12,10 +12,12 @@ import (
 )
 
 // createJobRequest is the moderator create-job body. url/title/company are required
-// (validated by the service); remote defaults to false when absent; posted_at is an
-// optional RFC3339 timestamp.
+// (validated by the service); source is the posting's real origin (defaults to "manual"
+// when absent); remote defaults to false when absent; posted_at is an optional RFC3339
+// timestamp.
 type createJobRequest struct {
 	URL         string     `json:"url"`
+	Source      string     `json:"source"`
 	Title       string     `json:"title"`
 	Company     string     `json:"company"`
 	Location    string     `json:"location"`
@@ -65,6 +67,7 @@ func (h *Handler) CreateJob(c *fiber.Ctx) error {
 
 	job, err := h.moderation.Create(c.Context(), actorID, moderation.CreateInput{
 		URL:         in.URL,
+		Source:      in.Source,
 		Title:       in.Title,
 		Company:     in.Company,
 		Location:    in.Location,

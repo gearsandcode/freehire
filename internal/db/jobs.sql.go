@@ -618,7 +618,7 @@ SET title        = $1,
     category     = $13,
     updated_by   = $14::bigint,
     updated_at   = now()
-WHERE public_slug = $15 AND source = 'manual'
+WHERE public_slug = $15 AND created_by IS NOT NULL
 RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by
 `
 
@@ -641,8 +641,9 @@ type UpdateManualJobParams struct {
 }
 
 // Moderator edit of a hand-curated job, addressed by public_slug and scoped to
-// source = 'manual' so this path can never rewrite an ATS/telegram vacancy. The
-// partial merge (nil = unchanged) and facet re-derivation happen in the service; this
+// created_by IS NOT NULL so this path can only rewrite a moderator-authored posting,
+// never an automated-source (ingest/telegram) one — regardless of the declared source.
+// The partial merge (nil = unchanged) and facet re-derivation happen in the service; this
 // query writes the resulting full field set, so geography/skills/company_slug stay
 // consistent with the edited content. The source identity (url/external_id/public_slug)
 // is deliberately NOT updatable here. The company row is upserted when a slug is present,
@@ -836,8 +837,8 @@ func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) (Job, erro
 const upsertManualJob = `-- name: UpsertManualJob :one
 WITH company_upsert AS (
     INSERT INTO companies (slug, name)
-    SELECT $5, $4
-    WHERE $5 <> ''
+    SELECT $6, $5
+    WHERE $6 <> ''
     ON CONFLICT (slug) DO UPDATE SET
         name       = EXCLUDED.name,
         updated_at = now()
@@ -846,13 +847,13 @@ INSERT INTO jobs (
     source, external_id, url, title, company, company_slug, location, remote, description, posted_at,
     public_slug, countries, regions, work_mode, skills, seniority, category, created_by
 ) VALUES (
-    'manual', $1, $2, $3,
-    $4, $5, $6, $7,
-    $8, $9,
-    $10,
-    COALESCE($11::text[], '{}'), COALESCE($12::text[], '{}'),
-    $13, COALESCE($14::text[], '{}'),
-    $15, $16, $17::bigint
+    $1, $2, $3, $4,
+    $5, $6, $7, $8,
+    $9, $10,
+    $11,
+    COALESCE($12::text[], '{}'), COALESCE($13::text[], '{}'),
+    $14, COALESCE($15::text[], '{}'),
+    $16, $17, $18::bigint
 )
 ON CONFLICT (source, external_id) DO UPDATE SET
     url          = EXCLUDED.url,
@@ -869,13 +870,14 @@ ON CONFLICT (source, external_id) DO UPDATE SET
     skills       = EXCLUDED.skills,
     seniority    = EXCLUDED.seniority,
     category     = EXCLUDED.category,
-    updated_by   = $18::bigint,
+    updated_by   = $19::bigint,
     closed_at    = NULL,
     updated_at   = now()
 RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by
 `
 
 type UpsertManualJobParams struct {
+	Source      string             `json:"source"`
 	ExternalID  string             `json:"external_id"`
 	URL         string             `json:"url"`
 	Title       string             `json:"title"`
@@ -896,15 +898,19 @@ type UpsertManualJobParams struct {
 	UpdatedBy   int64              `json:"updated_by"`
 }
 
-// Moderator-authored write: the manual-source analogue of UpsertJob. source is fixed
-// to 'manual' and the dedup key is (source, external_id = url), so re-POSTing the same
-// URL updates the row idempotently instead of duplicating it. created_by is stamped
-// once at insert; updated_by is (re)written on the conflict update. Like UpsertJob,
-// public_slug is minted once and never rewritten, and the enrichment columns are left
-// to SetJobEnrichment. The conflict reopens a previously closed posting (closed_at =
-// NULL) since the moderator is re-asserting it.
+// Moderator-authored write: the hand-curated analogue of UpsertJob. source is the
+// posting's real origin (e.g. 'workatastartup'), supplied by the moderator and
+// defaulting to 'manual'; the dedup key is (source, external_id = url), so re-POSTing
+// the same URL updates the row idempotently instead of duplicating it. The manual
+// provenance is recorded by created_by (set here, NULL for every automated source) —
+// not by the source value. created_by is stamped once at insert; updated_by is
+// (re)written on the conflict update. Like UpsertJob, public_slug is minted once and
+// never rewritten, and the enrichment columns are left to SetJobEnrichment. The conflict
+// reopens a previously closed posting (closed_at = NULL) since the moderator is
+// re-asserting it.
 func (q *Queries) UpsertManualJob(ctx context.Context, arg UpsertManualJobParams) (Job, error) {
 	row := q.db.QueryRow(ctx, upsertManualJob,
+		arg.Source,
 		arg.ExternalID,
 		arg.URL,
 		arg.Title,

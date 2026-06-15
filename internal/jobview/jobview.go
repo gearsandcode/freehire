@@ -25,9 +25,14 @@ import (
 // it as `{}`. Timestamps are RFC3339 UTC strings (or null) — the lexicographic
 // order is chronological, which the search index relies on for sorting.
 type Job struct {
-	PublicSlug  string `json:"public_slug"`
-	Source      string `json:"source"`
-	ExternalID  string `json:"external_id"`
+	PublicSlug string `json:"public_slug"`
+	Source     string `json:"source"`
+	// ManuallyAdded marks a hand-curated posting added by a moderator (created_by is
+	// set), as opposed to an automated source. It is the provenance signal, decoupled
+	// from Source (which is the real origin); the authoring user id itself is internal
+	// and never exposed.
+	ManuallyAdded bool   `json:"manually_added"`
+	ExternalID    string `json:"external_id"`
 	URL         string `json:"url"`
 	Title       string `json:"title"`
 	Company     string `json:"company"`
@@ -92,6 +97,7 @@ func FromRow(j db.Job) (Job, error) {
 	return Job{
 		PublicSlug:        j.PublicSlug,
 		Source:            j.Source,
+		ManuallyAdded:     j.CreatedBy.Valid,
 		ExternalID:        j.ExternalID,
 		URL:               j.URL,
 		Title:             j.Title,

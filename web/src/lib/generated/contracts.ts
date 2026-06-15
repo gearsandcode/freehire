@@ -63,6 +63,13 @@ export interface Enrichment {
 export interface Job {
   public_slug: string;
   source: string;
+  /**
+   * ManuallyAdded marks a hand-curated posting added by a moderator (created_by is
+   * set), as opposed to an automated source. It is the provenance signal, decoupled
+   * from Source (which is the real origin); the authoring user id itself is internal
+   * and never exposed.
+   */
+  manually_added: boolean;
   external_id: string;
   url: string;
   title: string;

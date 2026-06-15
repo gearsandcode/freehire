@@ -105,13 +105,16 @@ ON CONFLICT (source, external_id) DO UPDATE SET
 RETURNING *;
 
 -- name: UpsertManualJob :one
--- Moderator-authored write: the manual-source analogue of UpsertJob. source is fixed
--- to 'manual' and the dedup key is (source, external_id = url), so re-POSTing the same
--- URL updates the row idempotently instead of duplicating it. created_by is stamped
--- once at insert; updated_by is (re)written on the conflict update. Like UpsertJob,
--- public_slug is minted once and never rewritten, and the enrichment columns are left
--- to SetJobEnrichment. The conflict reopens a previously closed posting (closed_at =
--- NULL) since the moderator is re-asserting it.
+-- Moderator-authored write: the hand-curated analogue of UpsertJob. source is the
+-- posting's real origin (e.g. 'workatastartup'), supplied by the moderator and
+-- defaulting to 'manual'; the dedup key is (source, external_id = url), so re-POSTing
+-- the same URL updates the row idempotently instead of duplicating it. The manual
+-- provenance is recorded by created_by (set here, NULL for every automated source) —
+-- not by the source value. created_by is stamped once at insert; updated_by is
+-- (re)written on the conflict update. Like UpsertJob, public_slug is minted once and
+-- never rewritten, and the enrichment columns are left to SetJobEnrichment. The conflict
+-- reopens a previously closed posting (closed_at = NULL) since the moderator is
+-- re-asserting it.
 WITH company_upsert AS (
     INSERT INTO companies (slug, name)
     SELECT sqlc.arg(company_slug), sqlc.arg(company)
@@ -124,7 +127,7 @@ INSERT INTO jobs (
     source, external_id, url, title, company, company_slug, location, remote, description, posted_at,
     public_slug, countries, regions, work_mode, skills, seniority, category, created_by
 ) VALUES (
-    'manual', sqlc.arg(external_id), sqlc.arg(url), sqlc.arg(title),
+    sqlc.arg(source), sqlc.arg(external_id), sqlc.arg(url), sqlc.arg(title),
     sqlc.arg(company), sqlc.arg(company_slug), sqlc.arg(location), sqlc.arg(remote),
     sqlc.arg(description), sqlc.arg(posted_at),
     sqlc.arg(public_slug),
@@ -154,8 +157,9 @@ RETURNING *;
 
 -- name: UpdateManualJob :one
 -- Moderator edit of a hand-curated job, addressed by public_slug and scoped to
--- source = 'manual' so this path can never rewrite an ATS/telegram vacancy. The
--- partial merge (nil = unchanged) and facet re-derivation happen in the service; this
+-- created_by IS NOT NULL so this path can only rewrite a moderator-authored posting,
+-- never an automated-source (ingest/telegram) one — regardless of the declared source.
+-- The partial merge (nil = unchanged) and facet re-derivation happen in the service; this
 -- query writes the resulting full field set, so geography/skills/company_slug stay
 -- consistent with the edited content. The source identity (url/external_id/public_slug)
 -- is deliberately NOT updatable here. The company row is upserted when a slug is present,
@@ -188,7 +192,7 @@ SET title        = sqlc.arg(title),
     category     = sqlc.arg(category),
     updated_by   = sqlc.arg(updated_by)::bigint,
     updated_at   = now()
-WHERE public_slug = sqlc.arg(public_slug) AND source = 'manual'
+WHERE public_slug = sqlc.arg(public_slug) AND created_by IS NOT NULL
 RETURNING *;
 
 -- name: CloseUnseenJobs :execrows
