@@ -19,7 +19,7 @@ type ashby struct {
 }
 
 // NewAshby builds the Ashby link-source adapter.
-func NewAshby(c Client) LinkSource { return ashby{http: c} }
+func NewAshby(c Client) Source { return ashby{http: c} }
 
 func (ashby) Source() string { return "ashby" }
 

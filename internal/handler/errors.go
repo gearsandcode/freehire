@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// ErrorHandler is the single place every error returned by a handler becomes an
+// RenderError is the single place every error returned by a handler becomes an
 // HTTP response. It is wired into fiber.New so the error envelope (`{"error":
 // ...}`, mirroring the `{"data": ...}` success shape) and the status mapping
 // live in one place instead of being hand-rolled per handler:
@@ -22,7 +22,7 @@ import (
 //     resource doesn't exist;
 //   - anything else is an unexpected failure: 500 with a generic message, never
 //     leaking internals.
-func ErrorHandler(c *fiber.Ctx, err error) error {
+func RenderError(c *fiber.Ctx, err error) error {
 	status := fiber.StatusInternalServerError
 	msg := "internal server error"
 

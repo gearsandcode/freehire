@@ -67,8 +67,8 @@ var searchSortable = map[string]string{
 // (unauthenticated) like the other job reads. Response: {"data": [job view...],
 // "meta": {total, limit, offset}} — results carry public_slug and never the
 // internal id.
-func (h *Handler) SearchJobs(c *fiber.Ctx) error {
-	if h.search == nil {
+func (a *API) SearchJobs(c *fiber.Ctx) error {
+	if a.search == nil {
 		return fiber.NewError(fiber.StatusServiceUnavailable, "search is not available")
 	}
 
@@ -78,7 +78,7 @@ func (h *Handler) SearchJobs(c *fiber.Ctx) error {
 	}
 	ratio := min(max(c.QueryFloat("semantic_ratio", defaultSemanticRatio), 0), 1)
 
-	res, err := h.search.Search(c.Context(), search.SearchParams{
+	res, err := a.search.Search(c.Context(), search.SearchParams{
 		Query:         c.Query("q"),
 		Filter:        buildSearchFilter(c),
 		Sort:          searchSort(c),
@@ -87,7 +87,7 @@ func (h *Handler) SearchJobs(c *fiber.Ctx) error {
 		SemanticRatio: ratio,
 	})
 	if err != nil {
-		// ErrorHandler renders a generic 500; returning the error keeps the
+		// RenderError renders a generic 500; returning the error keeps the
 		// Meilisearch failure cause visible to logging instead of swallowing it.
 		return err
 	}

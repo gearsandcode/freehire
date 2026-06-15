@@ -5,8 +5,8 @@ import (
 )
 
 // Health reports service status and database availability.
-func (h *Handler) Health(c *fiber.Ctx) error {
-	if err := h.pool.Ping(c.Context()); err != nil {
+func (a *API) Health(c *fiber.Ctx) error {
+	if err := a.pool.Ping(c.Context()); err != nil {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
 			"status":   "degraded",
 			"database": "down",

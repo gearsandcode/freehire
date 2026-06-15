@@ -23,8 +23,8 @@ const (
 	maxLimit     = 100
 )
 
-// Handler holds dependencies shared across HTTP handlers.
-type Handler struct {
+// API holds dependencies shared across HTTP handlers.
+type API struct {
 	pool         *pgxpool.Pool
 	queries      *db.Queries
 	issuer       *auth.Issuer
@@ -93,7 +93,7 @@ type Config struct {
 // reads of the public endpoints.
 func Register(app *fiber.App, cfg Config) {
 	queries := db.New(cfg.Pool)
-	h := &Handler{
+	a := &API{
 		pool:           cfg.Pool,
 		queries:        queries,
 		issuer:         auth.NewIssuer(cfg.JWTSecret, cfg.JWTTTL),
@@ -107,66 +107,66 @@ func Register(app *fiber.App, cfg Config) {
 	// Assign only when configured: a nil *search.Client wrapped in the searcher
 	// interface would be a non-nil interface and defeat the nil check.
 	if cfg.Search != nil {
-		h.search = cfg.Search
+		a.search = cfg.Search
 	}
 
 	app.Use(cors.New(cors.Config{AllowOrigins: cfg.FrontendOrigin}))
 
-	app.Get("/health", h.Health)
+	app.Get("/health", a.Health)
 
 	api := app.Group("/api/v1")
-	api.Get("/jobs", h.ListJobs)
+	api.Get("/jobs", a.ListJobs)
 	// Literal route before the :slug param route so "search" is not read as a slug.
-	api.Get("/jobs/search", h.SearchJobs)
-	api.Get("/jobs/:slug", h.GetJob)
-	api.Get("/companies", h.ListCompanies)
-	api.Get("/companies/:slug", h.GetCompany)
+	api.Get("/jobs/search", a.SearchJobs)
+	api.Get("/jobs/:slug", a.GetJob)
+	api.Get("/companies", a.ListCompanies)
+	api.Get("/companies/:slug", a.GetCompany)
 
 	// Per-user job interactions and the user-scoped reads accept either the
 	// session cookie or an API key (RequireAuthOrKey), so a script holding a key
 	// can drive the same flow as the browser. The public job reads above stay
 	// unauthenticated. Jobs are addressed by their public slug; the handlers
 	// resolve it to the internal id before writing user_jobs.
-	keyAuth := auth.RequireAuthOrKey(h.issuer, h.queries)
-	api.Post("/jobs/:slug/view", keyAuth, h.RecordView)
-	api.Post("/jobs/:slug/apply", keyAuth, h.MarkApplied)
-	api.Post("/jobs/:slug/save", keyAuth, h.SaveJob)
-	api.Delete("/jobs/:slug/save", keyAuth, h.UnsaveJob)
-	api.Patch("/jobs/:slug/track", keyAuth, h.TrackJob)
-	api.Delete("/jobs/:slug/stage", keyAuth, h.ClearStage)
-	api.Delete("/jobs/:slug/track", keyAuth, h.Untrack)
+	keyAuth := auth.RequireAuthOrKey(a.issuer, a.queries)
+	api.Post("/jobs/:slug/view", keyAuth, a.RecordView)
+	api.Post("/jobs/:slug/apply", keyAuth, a.MarkApplied)
+	api.Post("/jobs/:slug/save", keyAuth, a.SaveJob)
+	api.Delete("/jobs/:slug/save", keyAuth, a.UnsaveJob)
+	api.Patch("/jobs/:slug/track", keyAuth, a.TrackJob)
+	api.Delete("/jobs/:slug/stage", keyAuth, a.ClearStage)
+	api.Delete("/jobs/:slug/track", keyAuth, a.Untrack)
 
 	// Moderator-authored jobs: create a hand-curated vacancy and edit it. Authenticated
 	// by cookie or API key (the CLI uses a key), then gated on the moderator role. The
 	// public job reads above stay unauthenticated; a non-moderator gets 403.
-	requireModerator := auth.RequireRole(h.queries, "moderator")
-	api.Post("/jobs", keyAuth, requireModerator, h.CreateJob)
-	api.Patch("/jobs/:slug", keyAuth, requireModerator, h.UpdateJob)
+	requireModerator := auth.RequireRole(a.queries, "moderator")
+	api.Post("/jobs", keyAuth, requireModerator, a.CreateJob)
+	api.Patch("/jobs/:slug", keyAuth, requireModerator, a.UpdateJob)
 
 	// User-scoped reads live under /me (consistent with /auth/me): the my-jobs
 	// listing joins the caller's interactions with the jobs they touch.
-	api.Get("/me/jobs", keyAuth, h.ListMyJobs)
+	api.Get("/me/jobs", keyAuth, a.ListMyJobs)
 
 	// API-key management is cookie-only (RequireAuth): a leaked key must not be
 	// able to create, list, or revoke keys. The create endpoint returns the
 	// plaintext token exactly once.
-	api.Post("/me/api-keys", auth.RequireAuth(h.issuer), h.CreateAPIKey)
-	api.Get("/me/api-keys", auth.RequireAuth(h.issuer), h.ListAPIKeys)
-	api.Delete("/me/api-keys/:id", auth.RequireAuth(h.issuer), h.RevokeAPIKey)
+	api.Post("/me/api-keys", auth.RequireAuth(a.issuer), a.CreateAPIKey)
+	api.Get("/me/api-keys", auth.RequireAuth(a.issuer), a.ListAPIKeys)
+	api.Delete("/me/api-keys/:id", auth.RequireAuth(a.issuer), a.RevokeAPIKey)
 
 	// Auth: register/login/logout are public (logout just clears the cookie).
 	// me is guarded and accepts a session cookie OR an API key, so a non-browser
 	// client (e.g. the CLI) can resolve its own identity with its key. It stays a
 	// read of the caller's own user — not key management, which is cookie-only.
 	authGroup := api.Group("/auth")
-	authGroup.Post("/register", h.Register)
-	authGroup.Post("/login", h.Login)
-	authGroup.Post("/logout", h.Logout)
-	authGroup.Get("/me", auth.RequireAuthOrKey(h.issuer, h.queries), h.Me)
+	authGroup.Post("/register", a.Register)
+	authGroup.Post("/login", a.Login)
+	authGroup.Post("/logout", a.Logout)
+	authGroup.Get("/me", auth.RequireAuthOrKey(a.issuer, a.queries), a.Me)
 
 	// OAuth sign-in: provider listing plus the authorization-code start and
 	// callback redirects. All public; the callback sets the session cookie.
-	authGroup.Get("/oauth/providers", h.ListOAuthProviders)
-	authGroup.Get("/oauth/:provider/start", h.OAuthStart)
-	authGroup.Get("/oauth/:provider/callback", h.OAuthCallback)
+	authGroup.Get("/oauth/providers", a.ListOAuthProviders)
+	authGroup.Get("/oauth/:provider/start", a.OAuthStart)
+	authGroup.Get("/oauth/:provider/callback", a.OAuthCallback)
 }

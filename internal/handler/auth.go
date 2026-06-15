@@ -49,16 +49,16 @@ func accountsError(err error) error {
 
 // Register creates an account, starts a session (auth cookie), and returns the
 // user.
-func (h *Handler) Register(c *fiber.Ctx) error {
+func (a *API) Register(c *fiber.Ctx) error {
 	var in credentials
 	if err := c.BodyParser(&in); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
-	user, err := h.accounts.Register(c.Context(), in.Email, in.Password)
+	user, err := a.accounts.Register(c.Context(), in.Email, in.Password)
 	if err != nil {
 		return accountsError(err)
 	}
-	if err := h.setSession(c, user.ID); err != nil {
+	if err := a.setSession(c, user.ID); err != nil {
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"data": toUserResponse(user)})
@@ -67,16 +67,16 @@ func (h *Handler) Register(c *fiber.Ctx) error {
 // Login verifies credentials, starts a session (auth cookie), and returns the
 // user. Unknown email, wrong password, and passwordless accounts all yield the
 // same generic 401 so the response never reveals which factor failed.
-func (h *Handler) Login(c *fiber.Ctx) error {
+func (a *API) Login(c *fiber.Ctx) error {
 	var in credentials
 	if err := c.BodyParser(&in); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
-	user, err := h.accounts.Login(c.Context(), in.Email, in.Password)
+	user, err := a.accounts.Login(c.Context(), in.Email, in.Password)
 	if err != nil {
 		return accountsError(err)
 	}
-	if err := h.setSession(c, user.ID); err != nil {
+	if err := a.setSession(c, user.ID); err != nil {
 		return err
 	}
 	return c.JSON(fiber.Map{"data": toUserResponse(user)})
@@ -84,29 +84,29 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 
 // Logout clears the auth cookie. It is public and idempotent: clearing an
 // absent or already-expired cookie is a no-op.
-func (h *Handler) Logout(c *fiber.Ctx) error {
-	auth.ClearTokenCookie(c, h.cookieSecure)
+func (a *API) Logout(c *fiber.Ctx) error {
+	auth.ClearTokenCookie(c, a.cookieSecure)
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // setSession issues a token for userID and writes it as the auth cookie.
-func (h *Handler) setSession(c *fiber.Ctx, userID int64) error {
-	token, err := h.issuer.Issue(userID)
+func (a *API) setSession(c *fiber.Ctx, userID int64) error {
+	token, err := a.issuer.Issue(userID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to start session")
 	}
-	auth.SetTokenCookie(c, token, h.issuer.TTL(), h.cookieSecure)
+	auth.SetTokenCookie(c, token, a.issuer.TTL(), a.cookieSecure)
 	return nil
 }
 
 // Me returns the authenticated user. It runs behind auth.RequireAuth, which has
 // already resolved and stored the user id.
-func (h *Handler) Me(c *fiber.Ctx) error {
+func (a *API) Me(c *fiber.Ctx) error {
 	id, ok := auth.UserID(c)
 	if !ok {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 	}
-	user, err := h.accounts.UserByID(c.Context(), id)
+	user, err := a.accounts.UserByID(c.Context(), id)
 	if err != nil {
 		return accountsError(err)
 	}

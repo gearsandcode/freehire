@@ -24,8 +24,8 @@ func (f *fakeSearcher) Search(_ context.Context, p search.SearchParams) (search.
 }
 
 func searchApp(s searcher) *fiber.App {
-	h := &Handler{search: s}
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	h := &API{search: s}
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	app.Get("/jobs/search", h.SearchJobs)
 	return app
 }

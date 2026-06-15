@@ -10,10 +10,10 @@ import (
 // ListJobs returns a page of jobs using limit/offset pagination. Jobs are
 // served in the shared jobview wire shape (public_slug, no internal id) — the
 // same shape the detail and search endpoints use.
-func (h *Handler) ListJobs(c *fiber.Ctx) error {
+func (a *API) ListJobs(c *fiber.Ctx) error {
 	limit, offset := pageParams(c)
 
-	jobs, err := h.queries.ListJobs(c.Context(), db.ListJobsParams{
+	jobs, err := a.queries.ListJobs(c.Context(), db.ListJobsParams{
 		Limit:  int32(limit),
 		Offset: int32(offset),
 	})
@@ -21,7 +21,7 @@ func (h *Handler) ListJobs(c *fiber.Ctx) error {
 		return err
 	}
 
-	total, err := h.queries.CountJobs(c.Context())
+	total, err := a.queries.CountJobs(c.Context())
 	if err != nil {
 		return err
 	}
@@ -35,10 +35,10 @@ func (h *Handler) ListJobs(c *fiber.Ctx) error {
 }
 
 // GetJob returns a single job addressed by its public slug.
-func (h *Handler) GetJob(c *fiber.Ctx) error {
-	job, err := h.queries.GetJobBySlug(c.Context(), c.Params("slug"))
+func (a *API) GetJob(c *fiber.Ctx) error {
+	job, err := a.queries.GetJobBySlug(c.Context(), c.Params("slug"))
 	if err != nil {
-		// ErrorHandler maps pgx.ErrNoRows to 404, anything else to 500.
+		// RenderError maps pgx.ErrNoRows to 404, anything else to 500.
 		return err
 	}
 

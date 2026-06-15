@@ -11,7 +11,7 @@ import (
 // post's links to full vacancies and maps each to a ResolvedJob carrying the destination
 // platform's source identity.
 type linkResolver struct {
-	reg []linksource.LinkSource
+	reg []linksource.Source
 }
 
 func (r linkResolver) Resolve(ctx context.Context, links []telegram.Link) ([]telegram.ResolvedJob, error) {

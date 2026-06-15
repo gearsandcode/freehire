@@ -20,7 +20,7 @@ type habrCareer struct {
 }
 
 // NewHabrCareer builds the Habr Career link-source adapter.
-func NewHabrCareer(c Client) LinkSource { return habrCareer{http: c} }
+func NewHabrCareer(c Client) Source { return habrCareer{http: c} }
 
 func (habrCareer) Source() string { return "habr_career" }
 

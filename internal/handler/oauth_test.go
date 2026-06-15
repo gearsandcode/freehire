@@ -32,8 +32,8 @@ func (f *fakeProvider) FetchIdentity(ctx context.Context, code string) (oauth.Id
 }
 
 func oauthApp(providers map[string]oauth.Provider) *fiber.App {
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
-	h := &Handler{
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
+	h := &API{
 		issuer:         auth.NewIssuer("test-secret", time.Hour),
 		oauth:          providers,
 		frontendOrigin: "http://app.example",

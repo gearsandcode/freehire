@@ -37,7 +37,7 @@ func main() {
 		AppName:      "hire",
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		ErrorHandler: handler.ErrorHandler,
+		ErrorHandler: handler.RenderError,
 	})
 
 	app.Use(recover.New())

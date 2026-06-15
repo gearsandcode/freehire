@@ -77,8 +77,8 @@ func TestListCompaniesSearchEndpoint(t *testing.T) {
 		}
 	}
 
-	h := &Handler{pool: pool, queries: db.New(pool)}
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	h := &API{pool: pool, queries: db.New(pool)}
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	app.Get("/api/v1/companies", h.ListCompanies)
 
 	doList := func(t *testing.T, url string) (names []string, total float64) {

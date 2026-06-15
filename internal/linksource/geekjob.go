@@ -18,7 +18,7 @@ type geekjob struct {
 }
 
 // NewGeekjob builds the Geekjob link-source adapter.
-func NewGeekjob(c Client) LinkSource { return geekjob{http: c} }
+func NewGeekjob(c Client) Source { return geekjob{http: c} }
 
 func (geekjob) Source() string { return "geekjob" }
 

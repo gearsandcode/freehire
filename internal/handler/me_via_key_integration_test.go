@@ -38,7 +38,7 @@ func TestAuthMe_AuthenticatesByAPIKey(t *testing.T) {
 		t.Fatalf("seed api_key: %v", err)
 	}
 
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	Register(app, Config{Pool: pool, FrontendOrigin: "http://localhost", JWTSecret: "test-secret", JWTTTL: time.Hour})
 
 	req := httptest.NewRequest(fiber.MethodGet, "/api/v1/auth/me", nil)

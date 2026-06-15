@@ -98,7 +98,7 @@ var _ telegram.PostStore = (*postStore)(nil)
 // linkMatcher adapts the linksource registry to telegram.LinkMatcher, so the crawl keeps
 // link-out digest posts whose teaser text alone does not look like a vacancy.
 type linkMatcher struct {
-	reg []linksource.LinkSource
+	reg []linksource.Source
 }
 
 func (m linkMatcher) Matches(links []telegram.Link) bool {

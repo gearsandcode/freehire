@@ -22,7 +22,7 @@ type Resolved struct {
 // err is non-nil only when matched links existed but all of them failed — a transient
 // outcome the caller should retry. Links no adapter matches are ignored, yielding
 // (nil, nil) so the caller can fall back to its own extraction.
-func ResolveLinks(ctx context.Context, reg []LinkSource, urls []string) ([]Resolved, error) {
+func ResolveLinks(ctx context.Context, reg []Source, urls []string) ([]Resolved, error) {
 	var out []Resolved
 	matched, failed := 0, 0
 	var firstErr error
@@ -62,7 +62,7 @@ func ResolveLinks(ctx context.Context, reg []LinkSource, urls []string) ([]Resol
 // MatchesAny reports whether any url is a link a destination adapter handles. The crawl
 // prefilter uses it so a link-out digest post is kept even when its teaser text alone does
 // not look like a vacancy.
-func MatchesAny(reg []LinkSource, urls []string) bool {
+func MatchesAny(reg []Source, urls []string) bool {
 	for _, raw := range urls {
 		if u, err := url.Parse(raw); err == nil && Find(reg, u) != nil {
 			return true

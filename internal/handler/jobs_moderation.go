@@ -39,7 +39,7 @@ type updateJobRequest struct {
 
 // moderationError maps the moderation sentinels onto HTTP statuses. ErrInvalid carries a
 // user-facing message surfaced in the 400 body; anything else (e.g. a DB failure) falls
-// through to the central ErrorHandler as a 500.
+// through to the central RenderError as a 500.
 func moderationError(err error) error {
 	switch {
 	case errors.Is(err, moderation.ErrJobNotFound):
@@ -54,7 +54,7 @@ func moderationError(err error) error {
 // CreateJob creates a hand-curated vacancy (moderator only). The body is validated by the
 // service, so a missing required field or a bad URL is a 400 before any DB write. Returns
 // the created job in the public wire shape with 201.
-func (h *Handler) CreateJob(c *fiber.Ctx) error {
+func (a *API) CreateJob(c *fiber.Ctx) error {
 	actorID, ok := auth.UserID(c)
 	if !ok {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
@@ -65,7 +65,7 @@ func (h *Handler) CreateJob(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
-	job, err := h.moderation.Create(c.Context(), actorID, moderation.CreateInput{
+	job, err := a.moderation.Create(c.Context(), actorID, moderation.CreateInput{
 		URL:         in.URL,
 		Source:      in.Source,
 		Title:       in.Title,
@@ -88,7 +88,7 @@ func (h *Handler) CreateJob(c *fiber.Ctx) error {
 
 // UpdateJob partially edits a manual vacancy (moderator only), addressed by public slug.
 // A non-manual or unknown slug is a 404. Returns the updated job in the public wire shape.
-func (h *Handler) UpdateJob(c *fiber.Ctx) error {
+func (a *API) UpdateJob(c *fiber.Ctx) error {
 	actorID, ok := auth.UserID(c)
 	if !ok {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
@@ -99,7 +99,7 @@ func (h *Handler) UpdateJob(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
-	job, err := h.moderation.Update(c.Context(), actorID, c.Params("slug"), moderation.UpdatePatch{
+	job, err := a.moderation.Update(c.Context(), actorID, c.Params("slug"), moderation.UpdatePatch{
 		Title:       in.Title,
 		Company:     in.Company,
 		Location:    in.Location,

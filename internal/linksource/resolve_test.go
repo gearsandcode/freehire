@@ -7,7 +7,7 @@ import (
 
 // resolveReg builds the real registry over a fake client routing the habr short link to a
 // vacancy, a second short link to a failing fetch, and a third to the non-vacancy index.
-func resolveReg() []LinkSource {
+func resolveReg() []Source {
 	c := (&fakeClient{}).
 		route("u.habr.com/PnBO7", habrVacancyHTML, "https://career.habr.com/vacancies/1000166712?utm_source=telegram").
 		route("u.habr.com/fq3n5", habrListingHTML, "https://career.habr.com/vacancies")

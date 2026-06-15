@@ -29,7 +29,7 @@ type myJobResponse struct {
 // counts for the tab badges — which is also why this writes its own envelope
 // instead of listResponse. Closed jobs stay listed: a user's history must not
 // shrink when a posting closes.
-func (h *Handler) ListMyJobs(c *fiber.Ctx) error {
+func (a *API) ListMyJobs(c *fiber.Ctx) error {
 	userID, ok := auth.UserID(c)
 	if !ok {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
@@ -41,7 +41,7 @@ func (h *Handler) ListMyJobs(c *fiber.Ctx) error {
 	}
 	limit, offset := pageParams(c)
 
-	rows, err := h.queries.ListUserJobs(c.Context(), db.ListUserJobsParams{
+	rows, err := a.queries.ListUserJobs(c.Context(), db.ListUserJobsParams{
 		UserID: userID,
 		Filter: filter,
 		Limit:  int32(limit),
@@ -50,7 +50,7 @@ func (h *Handler) ListMyJobs(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	counts, err := h.queries.CountUserJobs(c.Context(), userID)
+	counts, err := a.queries.CountUserJobs(c.Context(), userID)
 	if err != nil {
 		return err
 	}

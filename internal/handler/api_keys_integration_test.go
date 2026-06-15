@@ -46,9 +46,9 @@ func TestAPIKeysEndToEnd(t *testing.T) {
 	ownerCookie, _ := iss.Issue(ownerID)
 	otherCookie, _ := iss.Issue(otherID)
 	queries := db.New(pool)
-	h := &Handler{pool: pool, queries: queries, issuer: iss, tracking: jobtracking.New(jobtracking.NewQueriesRepository(queries))}
+	h := &API{pool: pool, queries: queries, issuer: iss, tracking: jobtracking.New(jobtracking.NewQueriesRepository(queries))}
 
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	keyAuth := auth.RequireAuthOrKey(iss, h.queries)
 	app.Post("/api/v1/me/api-keys", auth.RequireAuth(iss), h.CreateAPIKey)
 	app.Get("/api/v1/me/api-keys", auth.RequireAuth(iss), h.ListAPIKeys)

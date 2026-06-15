@@ -9,10 +9,10 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// errorApp mounts a route that returns errFn's error through ErrorHandler, so the
+// errorApp mounts a route that returns errFn's error through RenderError, so the
 // status mapping can be asserted end to end.
 func errorApp(errFn func(*fiber.Ctx) error) *fiber.App {
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	app.Get("/x", errFn)
 	return app
 }

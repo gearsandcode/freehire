@@ -60,8 +60,8 @@ func TestListMyJobsEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
-	h := &Handler{pool: pool, queries: queries, issuer: iss}
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	h := &API{pool: pool, queries: queries, issuer: iss}
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	app.Get("/api/v1/me/jobs", auth.RequireAuth(iss), h.ListMyJobs)
 
 	type item struct {
@@ -201,8 +201,8 @@ func TestListMyJobsBoardFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
-	h := &Handler{pool: pool, queries: queries, issuer: iss}
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	h := &API{pool: pool, queries: queries, issuer: iss}
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	app.Get("/api/v1/me/jobs", auth.RequireAuth(iss), h.ListMyJobs)
 
 	req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/jobs?filter=board", nil)

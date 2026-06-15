@@ -50,7 +50,7 @@ func (stubTrackingRepo) UntrackJob(context.Context, int64, int64) (jobtracking.I
 // path is covered by the user_jobs integration tests.
 func trackApp() (*fiber.App, *auth.Issuer) {
 	iss := auth.NewIssuer("test-secret", time.Hour)
-	h := &Handler{issuer: iss, tracking: jobtracking.New(stubTrackingRepo{})}
+	h := &API{issuer: iss, tracking: jobtracking.New(stubTrackingRepo{})}
 	app := fiber.New()
 	app.Patch("/jobs/:slug/track", auth.RequireAuth(iss), h.TrackJob)
 	return app, iss

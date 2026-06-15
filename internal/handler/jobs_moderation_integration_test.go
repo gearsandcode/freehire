@@ -49,14 +49,14 @@ func TestModeratorJobsEndToEnd(t *testing.T) {
 	modCookie, _ := iss.Issue(modID)
 	userCookie, _ := iss.Issue(userID)
 	queries := db.New(pool)
-	h := &Handler{
+	h := &API{
 		pool:       pool,
 		queries:    queries,
 		issuer:     iss,
 		moderation: moderation.New(moderation.NewQueriesRepository(queries, pool, enrich.Version)),
 	}
 
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	keyAuth := auth.RequireAuthOrKey(iss, queries)
 	requireMod := auth.RequireRole(queries, "moderator")
 	app.Post("/api/v1/jobs", keyAuth, requireMod, h.CreateJob)

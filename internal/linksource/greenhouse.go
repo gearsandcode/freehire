@@ -22,7 +22,7 @@ type greenhouse struct {
 }
 
 // NewGreenhouse builds the Greenhouse link-source adapter.
-func NewGreenhouse(c Client) LinkSource { return greenhouse{http: c} }
+func NewGreenhouse(c Client) Source { return greenhouse{http: c} }
 
 func (greenhouse) Source() string { return "greenhouse" }
 

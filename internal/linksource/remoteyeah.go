@@ -16,7 +16,7 @@ type remoteYeah struct {
 }
 
 // NewRemoteYeah builds the RemoteYeah link-source adapter.
-func NewRemoteYeah(c Client) LinkSource { return remoteYeah{http: c} }
+func NewRemoteYeah(c Client) Source { return remoteYeah{http: c} }
 
 func (remoteYeah) Source() string { return "remoteyeah" }
 

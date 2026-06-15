@@ -22,8 +22,8 @@ func meJobsApp(t *testing.T) (*fiber.App, string) {
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
-	h := &Handler{issuer: iss}
-	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler})
+	h := &API{issuer: iss}
+	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
 	app.Get("/me/jobs", auth.RequireAuth(iss), h.ListMyJobs)
 	return app, token
 }

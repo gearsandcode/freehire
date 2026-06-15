@@ -1,6 +1,6 @@
 // Package linksource turns an outbound job link found in a Telegram post into a fully
 // parsed vacancy under the destination's own identity. Where internal/sources adapts a
-// whole ATS board by id, a LinkSource adapts a single job-detail URL: it matches the
+// whole ATS board by id, a Source adapts a single job-detail URL: it matches the
 // link's host and resolves that one page. Adding a destination is a new adapter plus one
 // line in All — the same shape as sources.All.
 package linksource
@@ -14,7 +14,7 @@ import (
 	"github.com/strelov1/freehire/internal/sources"
 )
 
-// Client is the transport a LinkSource needs: a server-rendered detail page (optionally
+// Client is the transport a Source needs: a server-rendered detail page (optionally
 // following a shortener redirect to learn the canonical URL) or a structured JSON API
 // (multi-tenant ATS adapters read the platform's public per-job endpoint). *sources.Client
 // satisfies it.
@@ -24,11 +24,11 @@ type Client interface {
 	GetJSON(ctx context.Context, url string, v any) error
 }
 
-// LinkSource adapts one destination site reachable from a post link. Source is the key
+// Source adapts one destination site reachable from a post link. Source is the key
 // stored as jobs.source; Match reports whether this adapter handles a link URL (by host,
 // including any shortener that fronts the site); Resolve fetches and parses that one
 // vacancy.
-type LinkSource interface {
+type Source interface {
 	Source() string
 	Match(u *url.URL) bool
 	// Resolve fetches and parses the destination vacancy at raw. ok=false means the link
@@ -39,8 +39,8 @@ type LinkSource interface {
 
 // All assembles the registered link-source adapters, sharing one HTTP client. Adding a
 // destination is a new adapter plus one line here.
-func All(c Client) []LinkSource {
-	return []LinkSource{
+func All(c Client) []Source {
+	return []Source{
 		NewHabrCareer(c),
 		NewRemoteYeah(c),
 		NewGeekjob(c),
@@ -50,7 +50,7 @@ func All(c Client) []LinkSource {
 }
 
 // Find returns the first adapter that matches u, or nil when no destination handles it.
-func Find(reg []LinkSource, u *url.URL) LinkSource {
+func Find(reg []Source, u *url.URL) Source {
 	for _, ls := range reg {
 		if ls.Match(u) {
 			return ls

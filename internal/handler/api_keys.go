@@ -40,7 +40,7 @@ type createAPIKeyRequest struct {
 // CreateAPIKey mints a new API key for the authenticated user and returns the
 // plaintext token exactly once. Behind RequireAuth (cookie-only): a leaked key
 // must not be able to mint more keys.
-func (h *Handler) CreateAPIKey(c *fiber.Ctx) error {
+func (a *API) CreateAPIKey(c *fiber.Ctx) error {
 	userID, ok := auth.UserID(c)
 	if !ok {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
@@ -65,7 +65,7 @@ func (h *Handler) CreateAPIKey(c *fiber.Ctx) error {
 		expiresAt = pgtype.Timestamptz{Time: *in.ExpiresAt, Valid: true}
 	}
 
-	row, err := h.queries.CreateAPIKey(c.Context(), db.CreateAPIKeyParams{
+	row, err := a.queries.CreateAPIKey(c.Context(), db.CreateAPIKeyParams{
 		UserID:      userID,
 		Name:        name,
 		TokenHash:   hash,
@@ -93,13 +93,13 @@ func (h *Handler) CreateAPIKey(c *fiber.Ctx) error {
 
 // ListAPIKeys returns the authenticated user's keys, newest first, as metadata only
 // (never the token or its hash). Cookie-only.
-func (h *Handler) ListAPIKeys(c *fiber.Ctx) error {
+func (a *API) ListAPIKeys(c *fiber.Ctx) error {
 	userID, ok := auth.UserID(c)
 	if !ok {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
 	}
 
-	rows, err := h.queries.ListAPIKeysByUser(c.Context(), userID)
+	rows, err := a.queries.ListAPIKeysByUser(c.Context(), userID)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (h *Handler) ListAPIKeys(c *fiber.Ctx) error {
 // RevokeAPIKey deletes one of the authenticated user's keys by id. Owner-scoped: an
 // id that does not exist or belongs to another user deletes nothing and is a 404,
 // revealing nothing about it. Cookie-only.
-func (h *Handler) RevokeAPIKey(c *fiber.Ctx) error {
+func (a *API) RevokeAPIKey(c *fiber.Ctx) error {
 	userID, ok := auth.UserID(c)
 	if !ok {
 		return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
@@ -133,7 +133,7 @@ func (h *Handler) RevokeAPIKey(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid key id")
 	}
 
-	affected, err := h.queries.DeleteAPIKey(c.Context(), db.DeleteAPIKeyParams{ID: int64(id), UserID: userID})
+	affected, err := a.queries.DeleteAPIKey(c.Context(), db.DeleteAPIKeyParams{ID: int64(id), UserID: userID})
 	if err != nil {
 		return err
 	}
