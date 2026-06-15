@@ -30,14 +30,17 @@ var (
 	ErrJobNotFound = errors.New("moderation: job not found")
 )
 
-// manualSource is the fixed source identity for moderator-authored jobs; the URL is the
-// external id, so re-creating the same URL is an idempotent upsert.
-const manualSource = "manual"
+// defaultSource is the origin recorded when the moderator does not name one. The URL is
+// the external id, so re-creating the same URL under the same source is an idempotent
+// upsert. Manual provenance is tracked by created_by, not by this value.
+const defaultSource = "manual"
 
 // CreateInput is the moderator-supplied content for a new vacancy. URL (the dedup key),
-// Title, and Company are required; the rest is optional.
+// Title, and Company are required; the rest is optional. Source is the posting's real
+// origin (e.g. "workatastartup"); empty defaults to "manual".
 type CreateInput struct {
 	URL         string
+	Source      string
 	Title       string
 	Company     string
 	Location    string
@@ -58,8 +61,8 @@ type UpdatePatch struct {
 }
 
 // Repository is the persistence contract. Create runs the upsert and enrichment enqueue
-// atomically; BySlug loads a manual job (ErrJobNotFound when missing or not manual);
-// Update writes the full resulting row, scoped to the manual source.
+// atomically; BySlug loads a moderator-authored job (ErrJobNotFound when missing or not
+// moderator-created); Update writes the full resulting row, scoped to created_by IS NOT NULL.
 type Repository interface {
 	Create(ctx context.Context, p db.UpsertManualJobParams) (db.Job, error)
 	BySlug(ctx context.Context, slug string) (db.Job, error)
@@ -84,16 +87,21 @@ func (s *Service) Create(ctx context.Context, actorID int64, in CreateInput) (db
 	if err := in.validate(); err != nil {
 		return db.Job{}, err
 	}
+	source := strings.TrimSpace(in.Source)
+	if source == "" {
+		source = defaultSource
+	}
 	d := jobderive.Derive(jobderive.Input{
 		Title:       in.Title,
 		Company:     in.Company,
-		Source:      manualSource,
+		Source:      source,
 		ExternalID:  in.URL,
 		Location:    in.Location,
 		Description: in.Description,
 		WorkMode:    remoteWorkMode(in.Remote),
 	})
 	return s.repo.Create(ctx, db.UpsertManualJobParams{
+		Source:      source,
 		ExternalID:  in.URL,
 		URL:         in.URL,
 		Title:       in.Title,
@@ -119,7 +127,7 @@ func (s *Service) Create(ctx context.Context, actorID int64, in CreateInput) (db
 // re-derives the deterministic facets from the merged content — so editing the location,
 // description, or company keeps geography/skills/company-slug consistent. The source
 // identity (url/external_id/public_slug) is never recomputed, keeping the public slug
-// stable. A missing or non-manual slug surfaces ErrJobNotFound.
+// stable. A missing or non-moderator-created slug surfaces ErrJobNotFound.
 func (s *Service) Update(ctx context.Context, actorID int64, slug string, p UpdatePatch) (db.Job, error) {
 	if err := p.validate(); err != nil {
 		return db.Job{}, err
@@ -142,11 +150,12 @@ func (s *Service) Update(ctx context.Context, actorID int64, slug string, p Upda
 		postedAt = toTimestamptz(p.PostedAt)
 	}
 
-	// External id stays the create-time identity; only the dictionary facets re-derive.
+	// External id and source stay the create-time identity; only the dictionary facets
+	// re-derive (the recomputed public slug is discarded — identity is immutable).
 	d := jobderive.Derive(jobderive.Input{
 		Title:       title,
 		Company:     company,
-		Source:      manualSource,
+		Source:      cur.Source,
 		ExternalID:  cur.ExternalID,
 		Location:    location,
 		Description: description,

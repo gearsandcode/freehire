@@ -1,8 +1,9 @@
 //go:build integration
 
-// Integration tests for the moderator-authored write path's SQL contract: the manual
-// upsert dedups on the URL and records authorship, a manual job enqueues for enrichment,
-// and the edit query is scoped to source='manual' so it can never touch another source.
+// Integration tests for the moderator-authored write path's SQL contract: the upsert
+// dedups on (source, URL) and records authorship, a manual job enqueues for enrichment,
+// and the edit query is scoped to created_by IS NOT NULL so it can only touch a
+// moderator-authored posting, never an automated source.
 // Run with: go test -tags=integration ./internal/db/
 package db
 
@@ -16,6 +17,7 @@ import (
 
 func manualParams(url, title string, createdBy, updatedBy int64) UpsertManualJobParams {
 	return UpsertManualJobParams{
+		Source:      "manual",
 		ExternalID:  url,
 		URL:         url,
 		Title:       title,
@@ -100,7 +102,7 @@ func updateManualParams(slug, title string, updatedBy int64) UpdateManualJobPara
 	}
 }
 
-func TestUpdateManualJobIsManualScoped(t *testing.T) {
+func TestUpdateManualJobScopedByCreatedBy(t *testing.T) {
 	pool := startPostgres(t)
 	q := New(pool)
 	ctx := context.Background()
@@ -126,13 +128,14 @@ func TestUpdateManualJobIsManualScoped(t *testing.T) {
 		t.Errorf("UpdatedBy = %+v, want %d", updated.UpdatedBy, editor)
 	}
 
-	// A non-manual (ingested) job is invisible to the manual update — no row matches the
-	// source='manual' scope, so the moderator path can never rewrite an ATS vacancy.
+	// An automated-source (ingested) job has created_by NULL, so it is invisible to the
+	// moderator update — no row matches the created_by IS NOT NULL scope, and the moderator
+	// path can never rewrite an ATS vacancy.
 	ats, err := q.UpsertJob(ctx, ingestParams("gh:1", "ATS Job"))
 	if err != nil {
 		t.Fatalf("create ats: %v", err)
 	}
 	if _, err := q.UpdateManualJob(ctx, updateManualParams(ats.PublicSlug, "Hijacked", editor)); !errors.Is(err, pgx.ErrNoRows) {
-		t.Errorf("update of a non-manual job: err = %v, want pgx.ErrNoRows", err)
+		t.Errorf("update of an automated-source job: err = %v, want pgx.ErrNoRows", err)
 	}
 }

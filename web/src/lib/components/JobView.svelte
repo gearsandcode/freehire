@@ -195,6 +195,9 @@
             {job.source}
           </Badge>
         </a>
+        {#if job.manually_added}
+          <Badge variant="secondary">Manually added</Badge>
+        {/if}
         {#if posted}<span class="text-xs text-muted-foreground">Posted {posted}</span>{/if}
       </div>
     </div>
