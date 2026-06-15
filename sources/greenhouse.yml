@@ -2247,3 +2247,13 @@
   board: zscaler
 - company: Zuora
   board: zuora
+
+# LATAM-native employers (added 2026-06-15 to improve LATAM/Brazil coverage)
+- company: QuintoAndar
+  board: quintoandar
+- company: Wellhub
+  board: gympass
+- company: VTEX
+  board: vtex
+- company: EBANX
+  board: ebanx

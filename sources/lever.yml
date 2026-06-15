@@ -837,3 +837,7 @@
   board: zoox
 - company: Zus Health
   board: zushealth
+
+# LATAM-native employers (added 2026-06-15 to improve LATAM/Brazil coverage)
+- company: CloudWalk
+  board: cloudwalk
