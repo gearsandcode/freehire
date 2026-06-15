@@ -80,6 +80,7 @@ func All(c HTTPClient) map[string]Source {
 		NewWorkable(c),
 		NewRecruitee(c),
 		NewSmartRecruiters(c),
+		NewGupy(c),
 		NewPersonio(c),
 		NewPinpoint(c),
 		NewRippling(c),

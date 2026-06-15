@@ -1,0 +1,69 @@
+# gupy boards. Provider is the filename; each entry is company + board.
+# board = the company's numeric Gupy companyId (see internal/sources/gupy.go).
+# Find a companyId by opening <subdomain>.gupy.io and reading "companyId" from the
+# page's __NEXT_DATA__, or from any posting in the portal jobs feed.
+
+- company: Creditas
+  board: "85606"
+- company: Afya
+  board: "258"
+- company: Cogna Educação
+  board: "31849"
+- company: Compass UOL
+  board: "417"
+- company: Omie
+  board: "27130"
+- company: Clicksign
+  board: "20464"
+- company: Locaweb
+  board: "46700"
+- company: Memed
+  board: "1052"
+- company: Kovi
+  board: "813"
+- company: FCamara
+  board: "50527"
+- company: Stefanini Latam
+  board: "54256"
+- company: Topaz
+  board: "42212"
+- company: Grupo Daycoval Tech
+  board: "574"
+- company: Tecnologia Grupo Casas Bahia
+  board: "137"
+- company: Dotz
+  board: "37030"
+- company: Transfeera
+  board: "68283"
+- company: Caju
+  board: "2285"
+- company: Hitss Brasil
+  board: "57061"
+- company: Minerva Foods Tecnologia
+  board: "77785"
+- company: Spread Tecnologia
+  board: "42805"
+# IT consultancy / software / fintech / product — found via portal harvest +
+# web/GitHub search, verified against the API and deduped against the other ATS lists.
+- company: Minsait
+  board: "551"
+- company: Grupo SysMap
+  board: "89830"
+- company: Timenow
+  board: "296"
+- company: Montreal Tecnologia
+  board: "5977"
+- company: Asaas
+  board: "30728"
+- company: Tahto
+  board: "1164"
+- company: Keggo Tech
+  board: "68541"
+- company: Intelipost
+  board: "1894"
+- company: NeoAssist
+  board: "90391"
+- company: Cuponomia
+  board: "2258"
+- company: InfoPrice
+  board: "92244"
