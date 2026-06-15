@@ -22,6 +22,8 @@ import type {
   UserJob,
   ApiKey,
   CreatedApiKey,
+  Submission,
+  SubmissionInput,
 } from './types';
 
 /** A page of list items, optionally the total matching the query (endpoints that
@@ -315,6 +317,46 @@ export function createApi(
     await call(`/api/v1/me/api-keys/${id}`, { method: 'DELETE' });
   }
 
+  /** Submit a vacancy for moderation. Returns the pending submission. */
+  async function submitJob(input: SubmissionInput): Promise<Submission> {
+    const res = await request<{ data: Submission }>('/api/v1/submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    return res.data;
+  }
+
+  /** The caller's own submissions with their review status. */
+  async function listMySubmissions(): Promise<Submission[]> {
+    const res = await request<{ data: Submission[] }>('/api/v1/me/submissions');
+    return res.data;
+  }
+
+  /** The moderator review queue: pending submissions, with submitter emails. */
+  async function listPendingSubmissions(): Promise<Submission[]> {
+    const res = await request<{ data: Submission[] }>('/api/v1/submissions');
+    return res.data;
+  }
+
+  /** Approve a pending submission; the server mints a live job from it. */
+  async function approveSubmission(id: number): Promise<Submission> {
+    const res = await request<{ data: Submission }>(`/api/v1/submissions/${id}/approve`, {
+      method: 'POST',
+    });
+    return res.data;
+  }
+
+  /** Reject a pending submission with an optional reason. */
+  async function rejectSubmission(id: number, reason?: string): Promise<Submission> {
+    const res = await request<{ data: Submission }>(`/api/v1/submissions/${id}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason ?? '' }),
+    });
+    return res.data;
+  }
+
   return {
     listJobs,
     getJob,
@@ -339,6 +381,11 @@ export function createApi(
     listApiKeys,
     createApiKey,
     revokeApiKey,
+    submitJob,
+    listMySubmissions,
+    listPendingSubmissions,
+    approveSubmission,
+    rejectSubmission,
   };
 }
 
@@ -376,4 +423,9 @@ export const {
   listApiKeys,
   createApiKey,
   revokeApiKey,
+  submitJob,
+  listMySubmissions,
+  listPendingSubmissions,
+  approveSubmission,
+  rejectSubmission,
 } = api;

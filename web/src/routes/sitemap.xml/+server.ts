@@ -67,6 +67,7 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
     { loc: `${origin}/jobs` },
     { loc: `${origin}/companies` },
     { loc: `${origin}/cli` },
+    { loc: `${origin}/recruiters` },
   ];
 
   const [jobs, companies] = await Promise.all([
