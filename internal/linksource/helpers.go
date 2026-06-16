@@ -90,7 +90,7 @@ func parseRFC3339(s string) *time.Time {
 
 // humanizeBoard turns an ATS board slug into a display company name ("ruby-labs" → "Ruby
 // Labs"), used when the platform's API carries no company name. Its slug matches a curated
-// sources.yml company name's slug for the common case, so the companies table aligns.
+// board-file company name's slug for the common case, so the companies table aligns.
 func humanizeBoard(slug string) string {
 	words := strings.FieldsFunc(slug, func(r rune) bool { return r == '-' || r == '_' })
 	for i, w := range words {

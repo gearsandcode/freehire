@@ -20,18 +20,18 @@ const (
 	KindBoard Kind = "board"
 )
 
-// ChannelEntry is one configured channel from channels.yml.
+// ChannelEntry is one configured channel from sources/telegram.yml.
 type ChannelEntry struct {
 	Channel string `yaml:"channel"`
 	Kind    Kind   `yaml:"kind"`
 }
 
-// Config is the parsed channels.yml: the set of channels to crawl.
+// Config is the parsed sources/telegram.yml: the set of channels to crawl.
 type Config struct {
 	Channels []ChannelEntry `yaml:"channels"`
 }
 
-// LoadConfig reads and parses a channels.yml file.
+// LoadConfig reads and parses a sources/telegram.yml file.
 func LoadConfig(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -40,7 +40,7 @@ func LoadConfig(path string) (Config, error) {
 	return ParseConfig(data)
 }
 
-// ParseConfig parses channels.yml bytes into a Config.
+// ParseConfig parses sources/telegram.yml bytes into a Config.
 func ParseConfig(data []byte) (Config, error) {
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {

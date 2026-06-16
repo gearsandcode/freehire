@@ -63,9 +63,9 @@ The server only serves the API. Ingest and enrichment are standalone, run-once
 workers meant for cron — each crawls or drains its queue and exits.
 
 ```bash
-go run ./cmd/ingest        # crawl the ATS boards in sources.yml and upsert jobs
+go run ./cmd/ingest sources/greenhouse.yml  # crawl one board file and upsert jobs (path also via SOURCES_FILE)
 go run ./cmd/enrich        # drain the enrichment queue (LLM); needs LLM_* config
-go run ./cmd/tg-ingest     # crawl the Telegram channels in channels.yml
+go run ./cmd/tg-ingest     # crawl the Telegram channels in sources/telegram.yml
 go run ./cmd/tg-extract    # LLM-extract vacancies from crawled Telegram posts
 go run ./cmd/reindex       # rebuild the Meilisearch index from Postgres
 go run ./cmd/backfill-derive  # re-derive all six dictionary facets on existing jobs (follow with make reindex)
@@ -75,8 +75,8 @@ go run ./cmd/backfill-derive  # re-derive all six dictionary facets on existing 
 
 ```
 cmd/                 entry points: server + the standalone workers above
-sources.yml          ATS boards to crawl (company + provider + board id)
-channels.yml         Telegram channels to crawl
+sources/             board files, one per provider (e.g. greenhouse.yml = company + board id),
+                     plus a mixed custom.yml and telegram.yml (Telegram channels to crawl)
 internal/
   config/            env configuration
   database/          pgxpool connection pool
@@ -130,10 +130,12 @@ Auth legend: **✓** session cookie or API key · **🍪** session cookie only.
 
 ## Adding a source
 
-Adding a company is one entry in `sources.yml` (`company` + `provider` +
-`board`). Adding an ATS platform is a new adapter in `internal/sources` plus one
-line in `sources.All` — every adapter speaks the same `Source` interface, and
-`cmd/ingest` validates the config against the registry before any crawl.
+Adding a company is one entry in the provider's board file (`sources/<provider>.yml`,
+or the mixed `sources/custom.yml`) — `company` + `board` (and `provider` when an
+entry overrides the file's). Adding an ATS platform is a new adapter in
+`internal/sources` plus one line in `sources.All` — every adapter speaks the same
+`Source` interface, and `cmd/ingest` validates the file against the registry before
+any crawl.
 
 ## Frontend
 
@@ -143,7 +145,7 @@ proxy forwards `/api` to the backend).
 ## Contributing
 
 freehire's core is a small pipeline; the extension point is the **source**
-(one entry in `sources.yml`, or a new adapter in `internal/sources`). New
+(one entry in a `sources/` board file, or a new adapter in `internal/sources`). New
 contributors: open an issue first — issues and PRs from unapproved accounts are
 auto-closed by default. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow
 and [AGENT.md](AGENT.md) for the architecture and conventions. Questions and

@@ -12,7 +12,7 @@ import (
 )
 
 // greenhouse resolves Greenhouse-hosted vacancies. Greenhouse is multi-tenant, so a TG
-// link points at an arbitrary company's board — many of which sources.yml does not list.
+// link points at an arbitrary company's board — many of which sources/greenhouse.yml does not list.
 // The adapter writes the SAME identity the ingest pipeline would (source="greenhouse",
 // external_id="<board>:<id>"), so UpsertJob's ON CONFLICT dedups against an already-crawled
 // company and a not-yet-crawled one is added under the canonical key rather than as a

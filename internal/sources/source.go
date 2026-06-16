@@ -11,8 +11,9 @@ import (
 	"time"
 )
 
-// CompanyEntry is one configured board from sources.yml: the company whose jobs we
-// crawl, the platform it uses (Provider), and the platform-specific board id.
+// CompanyEntry is one configured board from a board file (sources/<provider>.yml): the
+// company whose jobs we crawl, the platform it uses (Provider), and the platform-specific
+// board id.
 type CompanyEntry struct {
 	Company  string `yaml:"company"`
 	Provider string `yaml:"provider"`

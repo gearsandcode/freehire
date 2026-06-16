@@ -9,9 +9,10 @@ upsert → enrich → serve. Everything a source adapter produces flows through 
 schema and one wire shape.
 
 **The extension point is the source, not the core.** Adding a company is one
-entry in `sources.yml`. Adding an ATS platform is one new adapter in
-`internal/sources` plus one line in `sources.All`. Adding a Telegram channel is
-one entry in `channels.yml`. If your feature fits that shape, it is welcome.
+entry in the provider's board file (`sources/<provider>.yml`). Adding an ATS
+platform is one new adapter in `internal/sources` plus one line in `sources.All`.
+Adding a Telegram channel is one entry in `sources/telegram.yml`. If your feature
+fits that shape, it is welcome.
 
 PRs that bloat the core — new abstractions, config knobs, or error handling that
 no current feature needs — will likely be rejected. Build each feature

@@ -176,13 +176,13 @@ Each adapter SHALL yield the job `description` as sanitized HTML assembled from 
 ### Requirement: Workable, Recruitee, and SmartRecruiters are registered providers
 
 The system SHALL register `workable`, `recruitee`, and `smartrecruiters` adapters so
-boards on these platforms can be listed in `sources.yml`. Each adapter SHALL yield the
+boards on these platforms can be listed in a `sources/` board file. Each adapter SHALL yield the
 job description as sanitized HTML assembled from the platform's authoritative HTML
 field(s), consistent with the existing adapters.
 
 #### Scenario: Workable board is crawled
 
-- **WHEN** `sources.yml` lists a board with provider `workable`
+- **WHEN** a `sources/` board file lists a board with provider `workable`
 - **THEN** the adapter fetches that account's jobs in one request and yields each with a
   sanitized HTML description from the inline `description` field
 
@@ -200,7 +200,7 @@ field(s), consistent with the existing adapters.
 ### Requirement: Personio, Pinpoint, Rippling, and BambooHR are registered providers
 
 The system SHALL register `personio`, `pinpoint`, `rippling`, and `bamboohr` adapters so
-boards on these platforms can be listed in `sources.yml`. Each adapter SHALL yield the
+boards on these platforms can be listed in a `sources/` board file. Each adapter SHALL yield the
 normalized job shape (at least title, url, location, remote flag, description, and the
 platform's native posting id) with the `description` as sanitized HTML assembled from the
 platform's authoritative HTML field(s), consistent with the existing adapters. An adapter
@@ -210,7 +210,7 @@ that posting rather than abort the board.
 
 #### Scenario: Personio XML feed is crawled in one request
 
-- **WHEN** `sources.yml` lists a board with provider `personio`
+- **WHEN** a `sources/` board file lists a board with provider `personio`
 - **THEN** the adapter fetches the board's `…jobs.personio.com/xml` feed in one request and
   yields each `<position>` with a sanitized HTML description assembled from its inline
   `jobDescriptions`, and a job URL built from the board and position id
@@ -249,7 +249,7 @@ that posting rather than abort the board.
 ### Requirement: Gem is a registered provider
 
 The system SHALL register a `gem` adapter so boards on the Gem platform (jobs.gem.com)
-can be listed in `sources.yml`. The adapter SHALL treat the configured `board` value as
+can be listed in a `sources/` board file. The adapter SHALL treat the configured `board` value as
 the Gem **vanity path** and pass it verbatim as the GraphQL `boardId`. It SHALL fetch
 postings from the public GraphQL endpoint `POST https://jobs.gem.com/api/public/graphql`
 using the `JobBoardList(boardId)` operation, and — because that list carries no
@@ -262,7 +262,7 @@ posting id), with the `description` as sanitized HTML assembled from the posting
 
 #### Scenario: Gem board is crawled list-then-detail
 
-- **WHEN** `sources.yml` lists a board with provider `gem` and a vanity-path `board`
+- **WHEN** a `sources/` board file lists a board with provider `gem` and a vanity-path `board`
 - **THEN** the adapter calls `JobBoardList` with that vanity path as `boardId`, and per
   returned posting calls `ExternalJobPostingQuery` with the posting's `extId` to obtain a
   sanitized HTML description, yielding each as the normalized job shape with
@@ -297,7 +297,7 @@ posting id), with the `description` as sanitized HTML assembled from the posting
 ### Requirement: successfactors is a registered provider
 
 The system SHALL register a `successfactors` adapter so SAP SuccessFactors career sites
-can be listed in `sources.yml`. The adapter SHALL treat the configured `board` value as the
+can be listed in a `sources/` board file. The adapter SHALL treat the configured `board` value as the
 career-site host and enumerate jobs from that site's `GET https://<board>/job_sitemap.xml`,
 taking each `<url>`'s `<loc>` as the job page URL (with the job's native id as the numeric
 segment of that path) and its `<lastmod>` as the posting date. Because the sitemap carries
@@ -312,7 +312,7 @@ enrichment derives it from the description.
 
 #### Scenario: SuccessFactors board is enumerated from its sitemap
 
-- **WHEN** `sources.yml` lists a board with provider `successfactors` and a career-site host
+- **WHEN** a `sources/` board file lists a board with provider `successfactors` and a career-site host
 - **THEN** the adapter fetches `https://<host>/job_sitemap.xml`, and per `<loc>` fetches the
   job page, yielding each as the normalized job shape with `external_id` set to the numeric
   id from the job URL and `posted_at` derived from the entry's `<lastmod>`
@@ -337,7 +337,7 @@ enrichment derives it from the description.
 ### Requirement: teamtailor is a registered provider
 
 The system SHALL register a `teamtailor` adapter so Teamtailor career sites can be listed in
-`sources.yml`. The adapter SHALL treat the configured `board` value as the career-site host and
+a `sources/` board file. The adapter SHALL treat the configured `board` value as the career-site host and
 enumerate jobs from that site's `GET https://<board>/jobs` listing HTML, taking each job-card
 anchor to a `/jobs/<id>-<slug>` path as a job (with the job's native id as the leading numeric
 segment of that path). The adapter SHALL paginate the listing via `?page=N`, requesting
@@ -353,7 +353,7 @@ consistent with the existing adapters. The job `location` SHALL come from the Jo
 
 #### Scenario: Teamtailor board is enumerated from its listing page
 
-- **WHEN** `sources.yml` lists a board with provider `teamtailor` and a career-site host
+- **WHEN** a `sources/` board file lists a board with provider `teamtailor` and a career-site host
 - **THEN** the adapter fetches `https://<host>/jobs`, and per job-card anchor fetches the job
   page, yielding each as the normalized job shape with `external_id` set to the numeric id from
   the job URL and `url` set to that job URL
@@ -385,7 +385,7 @@ consistent with the existing adapters. The job `location` SHALL come from the Jo
 ### Requirement: join is a registered provider
 
 The system SHALL register a `join` adapter so Join.com career pages can be listed in
-`sources.yml`. The adapter SHALL treat the configured `board` value as the numeric Join
+a `sources/` board file. The adapter SHALL treat the configured `board` value as the numeric Join
 company id and enumerate jobs from the public JSON API
 `GET https://join.com/api/public/companies/<board>/jobs?page=N&pageSize=<size>`, requesting
 successive pages until all pages reported by the response's pagination have been read, so a
@@ -400,7 +400,7 @@ and MAY be empty otherwise.
 
 #### Scenario: Join board is enumerated from the public list API
 
-- **WHEN** `sources.yml` lists a board with provider `join` and a numeric company id
+- **WHEN** a `sources/` board file lists a board with provider `join` and a numeric company id
 - **THEN** the adapter requests `…/companies/<id>/jobs` and, per listed job, fetches
   `…/jobs/<job-id>`, yielding each as the normalized job shape with `external_id` set to the
   API's numeric job id and `url` set to `https://join.com/companies/<company-slug>/<idParam>`

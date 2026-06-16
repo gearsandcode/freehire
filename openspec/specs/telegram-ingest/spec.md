@@ -6,7 +6,7 @@ TBD - created by archiving change add-telegram-source. Update Purpose after arch
 ### Requirement: Channels to crawl are configured in a file
 
 The system SHALL read the set of Telegram channels to crawl from a
-`channels.yml` file at crawl startup, each entry naming a `channel` (public
+`sources/telegram.yml` file at crawl startup, each entry naming a `channel` (public
 username) and a `kind` (`authored` or `board`). An entry with an unknown
 `kind`, an empty `channel`, or a duplicate `channel` SHALL cause the crawl
 command to fail fast at startup rather than silently skip or double-crawl the
@@ -14,12 +14,12 @@ channel.
 
 #### Scenario: Configured channels are loaded
 
-- **WHEN** `channels.yml` lists a channel with a valid `kind`
+- **WHEN** `sources/telegram.yml` lists a channel with a valid `kind`
 - **THEN** the crawl run includes that channel
 
 #### Scenario: Invalid entry fails fast
 
-- **WHEN** `channels.yml` contains an entry with an unknown `kind` or a
+- **WHEN** `sources/telegram.yml` contains an entry with an unknown `kind` or a
   duplicate `channel`
 - **THEN** the crawl command exits with an error naming the offending entry and
   crawls nothing
