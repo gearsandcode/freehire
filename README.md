@@ -1,5 +1,10 @@
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+  <img src="docs/assets/logo-light.svg" alt="freehire" width="84" height="84">
+</picture>
+
 # freehire
 
 ### Every IT job, straight from the source.
