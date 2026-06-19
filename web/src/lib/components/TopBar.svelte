@@ -24,7 +24,6 @@
     { href: '/collections', label: 'Collections' },
     { href: '/analytics', label: 'Analytics' },
     { href: '/cli', label: 'CLI' },
-    { href: '/docs/api', label: 'API' },
     { href: '/recruiters', label: 'For recruiters' },
   ];
 
