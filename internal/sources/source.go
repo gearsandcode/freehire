@@ -122,6 +122,7 @@ func All(c HTTPClient) map[string]Source {
 		NewBambooHR(c),
 		NewWorkday(c),
 		NewHuntflow(c),
+		NewInhire(c),
 		NewGem(c),
 		NewSuccessFactors(c),
 		NewTeamtailor(c),
