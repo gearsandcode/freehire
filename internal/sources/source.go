@@ -174,6 +174,7 @@ func All(c HTTPClient) map[string]Source {
 		NewBreezy(c),
 		NewJoin(c),
 		NewGlobalPayments(c),
+		NewRapyd(c),
 		NewCareerPlug(c),
 		NewPaycom(c),
 		NewLuxoft(c),
