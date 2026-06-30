@@ -71,6 +71,9 @@ type Querier interface {
 	// How many saved searches a user has — the per-user cap is enforced against this in
 	// the service before a create.
 	CountSavedSearches(ctx context.Context, userID int64) (int64, error)
+	// How many profiles a user has — the per-user cap is enforced against this in the
+	// service before a create.
+	CountSearchProfiles(ctx context.Context, userID int64) (int64, error)
 	// Per-filter row counts for the my-jobs tabs, in one aggregate pass. "all" is
 	// every interaction row; "viewed" is the view-only subset (neither saved nor
 	// applied), matching the ListUserJobs filter. "board" counts jobs on the Kanban
@@ -88,6 +91,10 @@ type Querier interface {
 	// Create a saved search for a user. The UNIQUE (user_id, name) constraint rejects a
 	// duplicate name (surfaced by the repository as a duplicate-name error). Returns the row.
 	CreateSavedSearch(ctx context.Context, arg CreateSavedSearchParams) (SavedSearch, error)
+	// Create a profile for a user. The UNIQUE (user_id, name) constraint rejects a
+	// duplicate name (surfaced by the repository as a duplicate-name error). Skills are
+	// already normalized by the service. Returns the row.
+	CreateSearchProfile(ctx context.Context, arg CreateSearchProfileParams) (SearchProfile, error)
 	// Insert a user-contributed vacancy into the moderation queue as 'pending'. The partial
 	// unique index on lower(url) WHERE status='pending' rejects a second pending submission of
 	// the same URL (the repository maps that unique violation to a 409).
@@ -117,6 +124,10 @@ type Querier interface {
 	// Returns the affected row count: 0 means it does not exist or is not the caller's
 	// (the handler maps that to 404).
 	DeleteSavedSearch(ctx context.Context, arg DeleteSavedSearchParams) (int64, error)
+	// Delete a profile, scoped to its owner so a user can only delete their own. Returns
+	// the affected row count: 0 means it does not exist or is not the caller's (the
+	// handler maps that to 404).
+	DeleteSearchProfile(ctx context.Context, arg DeleteSearchProfileParams) (int64, error)
 	// Unsubscribe, scoped to its owner. Returns the affected row count: 0 means it
 	// does not exist or is not the caller's (the handler maps that to 404). The match
 	// ledger cascades away with the subscription.
@@ -224,6 +235,8 @@ type Querier interface {
 	ListPendingSubmissions(ctx context.Context) ([]ListPendingSubmissionsRow, error)
 	// A user's saved searches, most recently updated first (the "My filters" picker order).
 	ListSavedSearches(ctx context.Context, userID int64) ([]SavedSearch, error)
+	// A user's search profiles, most recently updated first (the profile picker order).
+	ListSearchProfiles(ctx context.Context, userID int64) ([]SearchProfile, error)
 	// "My submissions": one user's submissions, newest first, whatever their status.
 	// LEFT JOIN the minted job (present only once approved) to surface its public_slug,
 	// so the UI can link an approved submission straight to its live vacancy page.
@@ -391,6 +404,12 @@ type Querier interface {
 	// query string is a real value (not NULL), so "save the unfiltered view" is honored.
 	// No matching owner-scoped row returns no row (the handler maps that to 404).
 	UpdateSavedSearch(ctx context.Context, arg UpdateSavedSearchParams) (SavedSearch, error)
+	// Overwrite a profile's name, specialization, and/or skills, scoped to its owner,
+	// bumping updated_at. Partial update: a NULL param leaves that column unchanged
+	// (COALESCE), so the caller can rename, re-specialize, replace skills, or any
+	// combination in one call. No matching owner-scoped row returns no row (the handler
+	// maps that to 404).
+	UpdateSearchProfile(ctx context.Context, arg UpdateSearchProfileParams) (SearchProfile, error)
 	// Single atomic write: upsert the company (only when the slug is non-empty,
 	// via the WHERE on the SELECT) and the job together, keeping the "one write =
 	// one job" property of the pipeline's write path.

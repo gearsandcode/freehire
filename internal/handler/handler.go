@@ -19,6 +19,7 @@ import (
 	"github.com/strelov1/freehire/internal/report"
 	"github.com/strelov1/freehire/internal/savedsearch"
 	"github.com/strelov1/freehire/internal/search"
+	"github.com/strelov1/freehire/internal/searchprofile"
 	"github.com/strelov1/freehire/internal/submission"
 	"github.com/strelov1/freehire/internal/subscription"
 	"github.com/strelov1/freehire/internal/telegramnotify"
@@ -71,6 +72,10 @@ type API struct {
 	// subscription owns the per-user filter-subscription use cases (subscribe a
 	// saved search to a channel, list/toggle/unsubscribe).
 	subscription *subscription.Service
+	// searchProfile owns the per-user search-profile use cases (list/create/update/
+	// delete a named specialization + skills); the handlers translate wire ↔ domain
+	// and delegate to it.
+	searchProfile *searchprofile.Service
 	// Telegram notification wiring. All nil/empty when the bot is unconfigured —
 	// the linking endpoints then report the feature off and the webhook is inert.
 	// telegramLinks mints/verifies the deep-link token; telegramBot replies to the
@@ -154,6 +159,7 @@ func Register(app *fiber.App, cfg Config) {
 	a.report = report.New(reportRepo, reportRepo)
 	a.savedSearch = savedsearch.New(savedsearch.NewQueriesRepository(queries))
 	a.subscription = subscription.New(subscription.NewQueriesRepository(queries))
+	a.searchProfile = searchprofile.New(searchprofile.NewQueriesRepository(queries))
 	// Telegram notifications are enabled only with both a bot token and a JWT
 	// secret (the link token reuses it). Absent either, the linking endpoints
 	// report the feature off and the webhook is inert (see telegramEnabled).
@@ -247,6 +253,13 @@ func Register(app *fiber.App, cfg Config) {
 	api.Post("/me/searches", saved, a.CreateSavedSearch)
 	api.Patch("/me/searches/:id", saved, a.UpdateSavedSearch)
 	api.Delete("/me/searches/:id", saved, a.DeleteSavedSearch)
+
+	// Search profiles are cookie-only (RequireAuth) like saved searches: a browser
+	// feature (the profile picker), owner-scoped (a non-owned id is a 404).
+	api.Get("/me/profiles", saved, a.ListSearchProfiles)
+	api.Post("/me/profiles", saved, a.CreateSearchProfile)
+	api.Patch("/me/profiles/:id", saved, a.UpdateSearchProfile)
+	api.Delete("/me/profiles/:id", saved, a.DeleteSearchProfile)
 
 	// Filter subscriptions + Telegram linking are cookie-only (RequireAuth) like
 	// saved searches: a browser convenience, owner-scoped (a non-owned id is 404).
