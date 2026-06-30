@@ -1091,6 +1091,8 @@
   board: sola
 - company: Solace
   board: solace
+- company: solidgate
+  board: solidgate
 - company: Solink
   board: solink
 - company: Solva
