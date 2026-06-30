@@ -152,6 +152,16 @@ const ENGLISH: FacetOption[] = options(ENGLISH_LEVEL_VALUES, {
   a1: 'A1', a2: 'A2', b1: 'B1', b2: 'B2', c1: 'C1', c2: 'C2', native: 'Native', none: 'None',
 });
 const CATEGORY: FacetOption[] = options(CATEGORY_VALUES, CATEGORY_LABELS);
+
+// The category facet options, exported for reuse outside the filter panel (the search
+// profile's specialization picker) so the same labels/order are shared, not duplicated.
+export const CATEGORY_OPTIONS: FacetOption[] = CATEGORY;
+
+/** Display label for a category code (e.g. ml_ai → "ML / AI"), shared by the profile
+ *  view; falls back to the humanized code. */
+export function categoryLabel(value: string): string {
+  return CATEGORY_LABELS[value] ?? humanize(value);
+}
 const DOMAINS: FacetOption[] = options(DOMAIN_VALUES, DOMAIN_LABELS);
 
 const POSTING_LANGUAGE: FacetOption[] = [

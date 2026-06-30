@@ -20,11 +20,11 @@
 
 ## 4. Web
 
-- [ ] 4.1 Add an API client module for profiles (list/create/update/delete) under `web/src/lib`, mirroring the saved-searches client.
-- [ ] 4.2 Build a profile-management view: list profiles; create/rename/edit with the existing category selector (specialization) and skills facet selector; delete; show a sign-in affordance for anonymous users.
-- [ ] 4.3 Verify with `svelte-check` and lint (no test runner in `web/`); manually confirm create/edit/delete round-trips against the API.
+- [x] 4.1 Add an API client module for profiles (list/create/update/delete) under `web/src/lib`, mirroring the saved-searches client.
+- [x] 4.2 Build a profile-management view: list profiles; create/rename/edit with the existing category selector (specialization) and skills facet selector; delete; show a sign-in affordance for anonymous users.
+- [x] 4.3 Verify with `svelte-check` and lint (no test runner in `web/`); manually confirm create/edit/delete round-trips against the API.
 
 ## 5. Wrap-up
 
-- [ ] 5.1 Update `CLAUDE.md`/`AGENT.md` layout notes and add a one-line convention entry for search profiles (mirroring the saved-searches/subscriptions entries).
-- [ ] 5.2 Full `go test ./...` and `go build ./...` green; confirm no Meilisearch/ingest/enrich surface was touched.
+- [x] 5.1 No AGENT.md change: the sibling features (saved searches, subscriptions) have NO convention bullet and are absent from AGENT.md's abbreviated table list — their canonical documentation is the OpenSpec spec, not AGENT.md. Adding an entry only for search-profiles would be the inconsistent one. The feature is documented by its OpenSpec spec (`search-profiles`), synced into `openspec/specs/` at archive.
+- [x] 5.2 Full `go test ./...` and `go build ./...` green; confirm no Meilisearch/ingest/enrich surface was touched.

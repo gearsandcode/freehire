@@ -54,6 +54,14 @@
         My jobs
       </a>
       <a
+        href={resolve('/my/profiles')}
+        role="menuitem"
+        onclick={() => (open = false)}
+        class="block px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        Search profiles
+      </a>
+      <a
         href={resolve('/my/notifications')}
         role="menuitem"
         onclick={() => (open = false)}
