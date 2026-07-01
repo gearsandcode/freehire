@@ -542,6 +542,10 @@ and a single failed detail SHALL drop only that posting rather than abort the bo
 providers except `yandex` SHALL be `boardless`; `yandex` SHALL select host and language
 (`ru`/`com`) from its `board`.
 
+Where a provider's public vacancy page is addressed by a different identifier than its
+dedup key, the adapter SHALL build the job `url` from the page identifier while keeping the
+dedup `external_id` on the provider's stable posting id.
+
 #### Scenario: Cursor-paginated board is fully crawled
 
 - **WHEN** a `yandex` board is crawled and its list endpoint paginates by cursor
@@ -562,6 +566,14 @@ providers except `yandex` SHALL be `boardless`; `yandex` SHALL select host and l
   body inline
 - **THEN** the adapter walks the offset window to the reported total and yields each posting
   directly with a sanitized description, issuing no per-posting detail request
+
+#### Scenario: Sber posting URL is built from the numeric internalId
+
+- **WHEN** a `sber` posting is normalized and its feed record carries both a `requisitionId`
+  GUID and a numeric `internalId`
+- **THEN** the job `url` is `https://rabota.sber.ru/search/<internalId>` (the identifier the
+  public vacancy page resolves — the `requisitionId` GUID route returns 404)
+- **AND** the job `external_id` remains the `requisitionId`, so the dedup key is unchanged
 
 #### Scenario: Header-gated board is crawled
 
