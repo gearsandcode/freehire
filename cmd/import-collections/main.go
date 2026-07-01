@@ -100,7 +100,17 @@ func resolveAll(ctx context.Context) (map[string][]string, error) {
 		case c.Slugs != nil:
 			resolved[c.Slug] = c.Slugs
 		case c.Dataset != nil:
-			names, err := fetchDataset(ctx, datasetURL(c), c.Dataset.Parse)
+			var (
+				names []string
+				err   error
+			)
+			if len(c.Dataset.Data) > 0 {
+				// Embedded, in-repo dataset (e.g. eastern-roots): parse the bundled
+				// bytes directly, no network fetch.
+				names, err = c.Dataset.Parse(c.Dataset.Data)
+			} else {
+				names, err = fetchDataset(ctx, datasetURL(c), c.Dataset.Parse)
+			}
 			if err != nil {
 				return nil, fmt.Errorf("resolve %q: %w", c.Slug, err)
 			}
@@ -152,7 +162,10 @@ func plan(rows []db.ListCompanyCollectionsRow, resolved map[string][]string) pla
 		}
 	}
 
-	managed := collections.Slugs()
+	// Managed = live collection slugs plus retired ones, so Reconcile strips a
+	// renamed/removed collection's stale tags (no wanted members) as well as
+	// reconciling the current set.
+	managed := append(collections.Slugs(), collections.RetiredSlugs...)
 	var writes []db.SetCompanyCollectionsParams
 	for _, r := range rows {
 		next := collections.Reconcile(r.Collections, managed, want[r.Slug])

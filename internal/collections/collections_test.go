@@ -2,6 +2,7 @@ package collections
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/strelov1/freehire/internal/normalize"
@@ -172,5 +173,59 @@ func TestRegistry_HasUnicorn(t *testing.T) {
 	c, ok := Lookup("unicorn")
 	if !ok || c.Dataset == nil {
 		t.Fatalf("unicorn collection missing or has no dataset: %+v ok=%v", c, ok)
+	}
+}
+
+func TestRetiredSlugs_AreNotLiveCollections(t *testing.T) {
+	// A retired slug must be absent from All (else it is a live collection, not
+	// retired) — the invariant that lets import-collections manage-then-strip it.
+	live := make(map[string]struct{})
+	for _, s := range Slugs() {
+		live[s] = struct{}{}
+	}
+	for _, r := range RetiredSlugs {
+		if _, ok := live[r]; ok {
+			t.Errorf("retired slug %q is still a live collection in All", r)
+		}
+	}
+	// russian-roots was renamed to eastern-roots; it must be retired so its stale
+	// tags get cleaned up.
+	if !slices.Contains(RetiredSlugs, "russian-roots") {
+		t.Error("russian-roots missing from RetiredSlugs after rename to eastern-roots")
+	}
+}
+
+func TestParseSlugList_SkipsBlanksAndComments(t *testing.T) {
+	data := []byte("# header comment\n\nabbyy\n  jetbrains  \n# mid comment\nrevolut\n")
+	got, err := ParseSlugList(data)
+	if err != nil {
+		t.Fatalf("ParseSlugList: %v", err)
+	}
+	if !reflect.DeepEqual(got, []string{"abbyy", "jetbrains", "revolut"}) {
+		t.Errorf("got = %#v, want [abbyy jetbrains revolut]", got)
+	}
+}
+
+func TestEasternRoots_EmbeddedDatasetResolves(t *testing.T) {
+	c, ok := Lookup("eastern-roots")
+	if !ok || c.Dataset == nil {
+		t.Fatalf("eastern-roots collection missing or has no dataset: %+v ok=%v", c, ok)
+	}
+	if len(c.Dataset.Data) == 0 {
+		t.Fatal("eastern-roots dataset has no embedded data")
+	}
+	names, err := c.Dataset.Parse(c.Dataset.Data)
+	if err != nil {
+		t.Fatalf("parse embedded eastern-roots: %v", err)
+	}
+	if len(names) < 50 {
+		t.Errorf("eastern-roots slugs = %d, want a substantial list", len(names))
+	}
+	// The embedded slugs must be canonical (Match normalizes them, but a
+	// non-canonical entry signals a bad edit to the committed file).
+	for _, s := range names {
+		if got := normalize.Slug(s); got != s {
+			t.Errorf("non-canonical slug %q (normalizes to %q)", s, got)
+		}
 	}
 }
