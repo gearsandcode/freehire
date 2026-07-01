@@ -38,6 +38,28 @@ func Lte(attr string, n int) string {
 	return attr + " <= " + strconv.Itoa(n)
 }
 
+// NotIn builds an `attr NOT IN [a, b, c]` fragment excluding a set of numeric
+// ids (Meilisearch's native list-exclusion operator). It is used by the swipe
+// deck to drop the caller's already-judged jobs by id. An empty set yields the
+// empty string, so the caller adds no filter fragment at all (Meilisearch has no
+// meaningful "NOT IN []").
+func NotIn(attr string, ids []int64) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(attr)
+	b.WriteString(" NOT IN [")
+	for i, id := range ids {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(strconv.FormatInt(id, 10))
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
 // Filter nests OR-groups into a single AND filter for Meilisearch: fragments
 // within a group are ORed, groups are ANDed. Empty groups are dropped; the
 // result is nil when nothing remains, which Meilisearch treats as "no filter".

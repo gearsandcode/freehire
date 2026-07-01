@@ -39,6 +39,15 @@ func TestPostedTSIsFilterableNotSortable(t *testing.T) {
 	}
 }
 
+func TestIDIsFilterable(t *testing.T) {
+	// The swipe deck excludes the caller's already-judged jobs via an
+	// `id NOT IN [...]` filter, which requires id to be a filterable attribute.
+	s := facetSettings()
+	if !contains(s.FilterableAttributes, "id") {
+		t.Errorf("id must be filterable for the swipe-deck exclusion, got %v", s.FilterableAttributes)
+	}
+}
+
 func contains(xs []string, want string) bool {
 	for _, x := range xs {
 		if x == want {

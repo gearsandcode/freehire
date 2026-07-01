@@ -34,6 +34,22 @@ func TestGteLte(t *testing.T) {
 	}
 }
 
+func TestNotIn(t *testing.T) {
+	if got := NotIn("id", []int64{3, 1, 2}); got != "id NOT IN [3, 1, 2]" {
+		t.Errorf("NotIn = %q, want %q", got, "id NOT IN [3, 1, 2]")
+	}
+	if got := NotIn("id", []int64{7}); got != "id NOT IN [7]" {
+		t.Errorf("NotIn single = %q", got)
+	}
+	// An empty exclusion set yields no fragment, so the caller adds no filter.
+	if got := NotIn("id", nil); got != "" {
+		t.Errorf("NotIn(nil) = %q, want empty", got)
+	}
+	if got := NotIn("id", []int64{}); got != "" {
+		t.Errorf("NotIn(empty) = %q, want empty", got)
+	}
+}
+
 func TestFilter_NilWhenEmpty(t *testing.T) {
 	if got := Filter(); got != nil {
 		t.Errorf("Filter() = %v, want nil", got)

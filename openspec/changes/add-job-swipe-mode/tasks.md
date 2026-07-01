@@ -18,8 +18,8 @@
 
 ## 3. Search: filterable id + exclusion helper
 
-- [ ] 3.1 Add `id` to `FilterableAttributes` in `internal/search/client.go`; update/settle the settings test
-- [ ] 3.2 Add `NotIn(attr string, ids []int64)` helper to `internal/search/filter.go` emitting `id NOT IN [...]` (escaped, composes through `Filter`); unit-test it
+- [x] 3.1 Add `id` to `FilterableAttributes` in `internal/search/client.go`; update/settle the settings test
+- [x] 3.2 Add `NotIn(attr string, ids []int64)` helper to `internal/search/filter.go` emitting `id NOT IN [...]` (escaped, composes through `Filter`); unit-test it
 
 ## 4. Swipe deck endpoint
 

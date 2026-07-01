@@ -492,6 +492,10 @@ func facetSettings() *meilisearch.Settings {
 		// values — so they are filtered on a bare attribute, not the enrichment
 		// dot path.
 		FilterableAttributes: []string{
+			// id backs the swipe deck's `id NOT IN [...]` per-user exclusion. Adding
+			// a new filterable attribute needs a reindex before it takes effect —
+			// reindex first on deploy, or /jobs 500s on the new attribute.
+			"id",
 			"source", "company_slug",
 			"work_mode", "regions", "countries", "skills", "collections", "remote_unspecified",
 			"enrichment.employment_type", "enrichment.education_level", "enrichment.seniority",
