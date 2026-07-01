@@ -100,6 +100,9 @@
   // --- Pointer drag on the active card (touch + mouse) ---------------------
   function onPointerDown(e: PointerEvent) {
     if (!current) return;
+    // Let clicks on links/buttons inside the card through — capturing the pointer
+    // for a drag would swallow their click (e.g. "Open full details").
+    if ((e.target as HTMLElement).closest('a, button')) return;
     dragging = true;
     startX = e.clientX;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -177,9 +180,9 @@
       >
         <!-- Swipe-direction cues. -->
         {#if dragX > 20}
-          <span class="absolute left-4 top-4 rounded-md border-2 border-emerald-500 px-2 py-0.5 text-sm font-bold text-emerald-500">SAVE</span>
+          <span class="absolute right-4 top-4 rounded-md border-2 border-emerald-500 px-2 py-0.5 text-sm font-bold text-emerald-500">SAVE</span>
         {:else if dragX < -20}
-          <span class="absolute right-4 top-4 rounded-md border-2 border-rose-500 px-2 py-0.5 text-sm font-bold text-rose-500">SKIP</span>
+          <span class="absolute left-4 top-4 rounded-md border-2 border-rose-500 px-2 py-0.5 text-sm font-bold text-rose-500">SKIP</span>
         {/if}
 
         <div class="flex items-center gap-3">
@@ -211,13 +214,16 @@
           <p class="line-clamp-4 text-sm text-muted-foreground">{current.description}</p>
         {/if}
 
-        <button
-          type="button"
+        <!-- Opens in a new tab so the deck (and your place in it) is preserved —
+             return by closing/switching back to this tab. -->
+        <a
+          href={resolve('/jobs/[slug]', { slug: current.public_slug })}
+          target="_blank"
+          rel="noopener"
           class="mt-auto text-left text-sm font-medium text-foreground underline-offset-4 hover:underline"
-          onclick={openDetail}
         >
           Open full details →
-        </button>
+        </a>
       </div>
     </div>
 
