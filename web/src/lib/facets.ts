@@ -7,8 +7,10 @@
 // in ./generated/contracts are the single source of truth for closed-vocabulary
 // option values. A new backend value appears automatically here (humanized);
 // only the label-override map below needs updating when the label differs from
-// the title-cased fallback. REGION, POSTING_LANGUAGE, and CURRENCY are curated
-// subsets not driven by generated arrays — leave those alone.
+// the title-cased fallback. REGION and CURRENCY are curated subsets not driven
+// by generated arrays — leave those alone. Job language is a dynamic facet: its
+// options come from the live distribution (any detected language), labelled via
+// languageLabel.
 
 import {
   SOURCE_VALUES, WORK_MODE_VALUES, SENIORITY_VALUES, CATEGORY_VALUES,
@@ -74,6 +76,27 @@ export function countryLabel(code: string): string {
   }
 }
 
+// Resolve an ISO 639-1 code (en, pt, ru, …) to an English language name via
+// platform Intl data (no hand-maintained table); fall back to the upper-cased
+// code. Mirrors countryLabel — the posting-language facet is dynamic, so any
+// code the language detector emits gets a readable label.
+const languageNames = (() => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' });
+  } catch {
+    return null;
+  }
+})();
+
+export function languageLabel(code: string): string {
+  if (!code) return code;
+  try {
+    return languageNames?.of(code) ?? code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
+}
+
 // Company facet values are slugs (group-ib, epam); the live distribution carries
 // no display name, so humanize the slug for a readable label. Imperfect for
 // acronyms (group-ib → "Group Ib") but consistent with the other facets — a real
@@ -96,6 +119,7 @@ async function companySearch(query: string): Promise<FacetOption[]> {
  *  humanized name, else the value. */
 export function dynamicLabel(param: string, value: string): string {
   if (param === 'countries') return countryLabel(value);
+  if (param === 'posting_language') return languageLabel(value);
   if (param === 'company_slug') return companyLabel(value);
   return value;
 }
@@ -164,12 +188,6 @@ export function categoryLabel(value: string): string {
 }
 const DOMAINS: FacetOption[] = options(DOMAIN_VALUES, DOMAIN_LABELS);
 
-const POSTING_LANGUAGE: FacetOption[] = [
-  { value: 'en', label: 'EN' },
-  { value: 'ru', label: 'RU' },
-  { value: 'uk', label: 'UA' },
-];
-
 const CURRENCY: FacetOption[] = [
   { value: 'USD', label: 'USD' },
   { value: 'EUR', label: 'EUR' },
@@ -194,7 +212,7 @@ export const FACETS: FacetDef[] = [
   { param: 'relocation', label: 'Relocation', control: 'pills', options: RELOCATION, excludable: true },
   { param: 'employment_type', label: 'Employment', control: 'pills', options: EMPLOYMENT, excludable: true },
   { param: 'english_level', label: 'English', control: 'pills', options: ENGLISH, excludable: true },
-  { param: 'posting_language', label: 'Job language', control: 'pills', options: POSTING_LANGUAGE, excludable: true },
+  { param: 'posting_language', label: 'Job language', control: 'select', dynamic: true, excludable: true, placeholder: 'Search languages' },
   { param: 'salary_currency', label: 'Currency', control: 'pills', options: CURRENCY, excludable: true },
   { param: 'company_slug', label: 'Company', control: 'remote', excludable: true, placeholder: 'Search companies', remote: companySearch },
   { param: 'source', label: 'Source', control: 'pills', options: SOURCE, excludable: true },
