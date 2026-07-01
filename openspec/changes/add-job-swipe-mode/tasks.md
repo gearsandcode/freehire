@@ -42,6 +42,6 @@
 
 ## 7. Verification
 
-- [ ] 7.1 `go build ./... && go vet ./... && go test ./...` (+ `-tags=integration ./internal/...` for the new DB tests) green
-- [ ] 7.2 `svelte-check` and lint clean for the touched web files
-- [ ] 7.3 Manual/headless pass across the spec scenarios: launch from `/jobs` with filters, save/dismiss/open/undo, exclusion of judged jobs, prefetch, empty state, mobile swipe + desktop keys, anon sign-in gate
+- [x] 7.1 `go build ./... && go vet ./... && go test ./...` (+ `-tags=integration ./internal/...` for the new DB tests) green
+- [x] 7.2 `svelte-check` and lint clean for the touched web files
+- [x] 7.3 Manual/headless pass across the spec scenarios: launch from `/jobs` with filters, save/dismiss/open/undo, exclusion of judged jobs, prefetch, empty state, mobile swipe + desktop keys, anon sign-in gate
