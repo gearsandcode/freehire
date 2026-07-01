@@ -182,7 +182,7 @@
         {#if dragX > 20}
           <span class="absolute right-4 top-4 rounded-md border-2 border-emerald-500 px-2 py-0.5 text-sm font-bold text-emerald-500">SAVE</span>
         {:else if dragX < -20}
-          <span class="absolute left-4 top-4 rounded-md border-2 border-rose-500 px-2 py-0.5 text-sm font-bold text-rose-500">SKIP</span>
+          <span class="absolute right-4 top-4 rounded-md border-2 border-rose-500 px-2 py-0.5 text-sm font-bold text-rose-500">SKIP</span>
         {/if}
 
         <div class="flex items-center gap-3">
