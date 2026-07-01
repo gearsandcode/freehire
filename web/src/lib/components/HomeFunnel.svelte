@@ -28,13 +28,15 @@
   // SVG geometry, in viewBox units (the element scales to its container width).
   // The left source bar fills HH; the right nodes share the same heights but are
   // spread with a gap between them, so the ribbons fan out instead of running flat.
-  const W = 460;
+  // The viewBox is deliberately wide (W ≫ HH) so a full-width figure renders at a
+  // sensible height — the aspect ratio, not the container, caps how tall it gets.
+  const W = 760;
   const PAD = 10;
   const GAP = 8;
   const HH = 224;
   const LX = 6;
   const LW = 16;
-  const RX = 250;
+  const RX = 470;
   const RW = 14;
   const MID = (LX + LW + RX) / 2;
 
@@ -99,7 +101,7 @@
     <path d={r.path} fill={r.color} fill-opacity="0.5" />
     <rect x={RX} y={r.nodeY} width={RW} height={Math.max(r.nodeH, 1)} rx="2" fill={r.color} />
     <text x={RX + RW + 8} y={r.labelY} dy="0.32em" class="fill-foreground text-[0.72rem]">
-      {r.label}<tspan class="fill-muted-foreground"> {r.count}</tspan>
+      {r.label}<tspan dx="7" class="fill-muted-foreground">{r.count}</tspan>
     </text>
   {/each}
 </svg>

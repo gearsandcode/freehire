@@ -258,9 +258,9 @@
       </p>
     </div>
 
-    <!-- Funnel figure, capped to the copy width: the SVG scales with its viewBox,
-         so a full-bleed card would blow the diagram (and its labels) out of scale. -->
-    <figure class="mt-10 max-w-2xl overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <!-- Funnel figure, full width: the SVG's wide viewBox (W ≫ height) keeps the
+         diagram at a sensible height even spanning the whole section. -->
+    <figure class="mt-10 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <figcaption
         class="flex items-center gap-2 border-b border-border px-4 py-2.5 text-xs text-muted-foreground"
       >
