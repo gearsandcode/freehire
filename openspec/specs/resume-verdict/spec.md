@@ -3,81 +3,12 @@
 ## Purpose
 TBD - created by syncing change resume-verdict. Update Purpose after archive.
 ## Requirements
-### Requirement: Deterministic market skill-gap scoring
-
-The system SHALL compute a verdict for a search profile by comparing the profile's saved skills against the most in-demand skills on the live market for the profile's specialization(s). The market is the facet distribution of open jobs filtered to the profile's specialization categories (OR-combined). The "expected" set SHALL be the top 20 skills ordered by descending open-job count, breaking ties by ascending slug for determinism.
-
-#### Scenario: Stack match reflects coverage of the top skills
-- **WHEN** a profile's skills cover 11 of the 20 top market skills for its specializations
-- **THEN** the verdict reports `stack_match` = 55 (round(11/20 × 100)) and marks those 11 rows `have: true`
-
-#### Scenario: Fewer than twenty market skills available
-- **WHEN** the market for the specializations returns only 8 distinct skills
-- **THEN** the breakdown contains 8 rows and `stack_match` is computed against a denominator of 8, not 20
-
-#### Scenario: No market data available
-- **WHEN** the search/facet backend is not configured
-- **THEN** the verdict endpoint responds 503 and no verdict is produced
-
-### Requirement: Per-gap unlock percentage
-
-For each expected skill the candidate lacks (a gap), the system SHALL report an `unlock` percentage equal to the share of the role's open postings that list that skill (round(count / total × 100)). Covered skills SHALL NOT carry an unlock value.
-
-#### Scenario: Gap carries its market reach
-- **WHEN** a gap skill appears in 340 of 1000 open postings for the role
-- **THEN** that skill's row has `have: false` and `unlock: 34`
-
-#### Scenario: Covered skill has no unlock
-- **WHEN** an expected skill is present in the profile
-- **THEN** its row has `have: true` and no `unlock` value
-
-### Requirement: Must-have designation by demand share
-
-The system SHALL mark an expected skill as a must-have when it appears in at least a fixed demand-share fraction of the role's open postings. The verdict SHALL report `must_have_total` (must-haves within the top set) and `must_have_covered` (must-haves the profile has).
-
-#### Scenario: High-demand skill is a must-have
-- **WHEN** a skill appears in 45% of the role's postings and the must-have cutoff is 40%
-- **THEN** its row has `must_have: true` and it counts toward `must_have_total`
-
-#### Scenario: Lower-demand skill is not a must-have
-- **WHEN** a skill appears in 25% of the role's postings and the cutoff is 40%
-- **THEN** its row has `must_have: false`
-
-### Requirement: LLM coherence score and gap advice
-
-When an LLM is configured, the system SHALL let the user upload a résumé (PDF or plain text) on the verdict page and, in that same request, ask the model — over the résumé text — for a coherence score in the range 0-100 (how well the claimed skills are substantiated by the Experience section) and a short piece of advice for each must-have gap. Out-of-range scores SHALL be clamped to 0-100; advice for skills not in the requested gap set SHALL be dropped; advice text SHALL be length-bounded.
-
-#### Scenario: Résumé analyzed with the model configured
-- **WHEN** a signed-in user uploads a résumé on the verdict page and the LLM is configured
-- **THEN** the returned verdict includes `coherence` (0-100) and `advice` attached to must-have gap rows
-
-#### Scenario: Model returns an out-of-range score
-- **WHEN** the model returns a coherence of 150
-- **THEN** the persisted/served coherence is clamped to 100
-
-### Requirement: Résumé text is never persisted
-
-The system SHALL use the raw résumé text only within the analysis request and MUST NOT persist or log it. Only the derived analysis — coherence score, per-gap advice, and the analysis timestamp — SHALL be stored, on the owning search profile.
-
-#### Scenario: Only derived analysis is stored
-- **WHEN** a résumé is analyzed for a profile
-- **THEN** the stored `resume_analysis` contains the coherence, advice, and `analyzed_at` but no résumé text, and reopening the verdict later shows the same coherence and advice
-
-### Requirement: Graceful degradation without the LLM
-
-The verdict SHALL always render its deterministic core. When the LLM is unconfigured or the analysis call fails, the endpoint SHALL still return the deterministic verdict with the coherence score and advice omitted (a 200, not an error).
-
-#### Scenario: LLM unconfigured
-- **WHEN** the server has no LLM configured and a verdict is requested
-- **THEN** the response is 200 with the full deterministic breakdown and no `coherence`
-
-#### Scenario: LLM call fails during analysis
-- **WHEN** a résumé is uploaded but the model errors or returns unparseable output
-- **THEN** the response is 200 with the deterministic verdict and no `coherence`/`advice`, and the raw error is not surfaced to the client
-
 ### Requirement: Verdict endpoint authentication and ownership
 
-The verdict endpoints SHALL require an authenticated session (cookie-only) and SHALL operate only on a profile owned by the caller. Requesting or analyzing another user's profile, or a missing profile, SHALL respond 404.
+The verdict endpoint SHALL require an authenticated session (cookie-only) and
+SHALL operate only on a profile owned by the caller. It SHALL be a single
+read-only `GET /me/profiles/:id/verdict`. Requesting another user's profile, or a
+missing profile, SHALL respond 404.
 
 #### Scenario: Owner reads their verdict
 - **WHEN** a signed-in user requests the verdict for a profile they own
@@ -86,3 +17,83 @@ The verdict endpoints SHALL require an authenticated session (cookie-only) and S
 #### Scenario: Non-owner is refused
 - **WHEN** a signed-in user requests the verdict for a profile owned by someone else
 - **THEN** the response is 404
+
+### Requirement: Vacancy coverage of the selected role
+
+The system SHALL compute a verdict for a search profile as the coverage its saved
+skills achieve over the live market for the selected role(s): the count of open
+vacancies that list at least one of the profile's skills, out of the total open
+vacancies for the role. The role is the set of selected specialization
+categories (OR-combined). Coverage SHALL be reported as an absolute `covered`
+count, a `total` count, and a `coverage_percent` = round(covered / total × 100).
+When the role has no open vacancies (`total` = 0), `coverage_percent` SHALL be 0.
+
+#### Scenario: Coverage reported as count and percent
+- **WHEN** a role has 1000 open vacancies and 630 of them list at least one of the profile's skills
+- **THEN** the verdict reports `total` = 1000, `covered` = 630, and `coverage_percent` = 63
+
+#### Scenario: Role with no open vacancies
+- **WHEN** the selected role has 0 open vacancies
+- **THEN** the verdict reports `total` = 0, `covered` = 0, and `coverage_percent` = 0
+
+#### Scenario: No market data available
+- **WHEN** the search/facet backend is not configured
+- **THEN** the verdict endpoint responds 503 and no verdict is produced
+
+### Requirement: Per-skill new-vacancy unlock
+
+For each in-demand skill the profile lacks, the system SHALL report how many
+currently-uncovered vacancies list that skill — i.e. vacancies in the role that
+list the skill but none of the profile's current skills (`new_vacancies`) — and
+`unlock_percent` = round(new_vacancies / total × 100). Gaps SHALL be ranked by
+`new_vacancies` descending, breaking ties by ascending skill slug, and the
+response SHALL carry at most the top 20. Skills the profile already has SHALL NOT
+appear as gaps.
+
+#### Scenario: Gap carries the new vacancies it unlocks
+- **WHEN** 190 open vacancies in a 1000-vacancy role list "kubernetes" and none of those 190 list any skill the profile already has
+- **THEN** the gap row for "kubernetes" reports `new_vacancies` = 190 and `unlock_percent` = 19
+
+#### Scenario: A skill covered by existing skills is not double-counted
+- **WHEN** a vacancy lists both "kubernetes" (a gap) and "docker" (a skill the profile has)
+- **THEN** that vacancy is already counted as covered and does NOT contribute to "kubernetes"'s `new_vacancies`
+
+#### Scenario: Owned skills are not gaps
+- **WHEN** the profile already lists "go"
+- **THEN** "go" does not appear in the gap list regardless of its market demand
+
+#### Scenario: Gaps ranked biggest win first
+- **WHEN** the uncovered market has "kafka" unlocking 120 vacancies and "grpc" unlocking 64
+- **THEN** "kafka" is ranked before "grpc" in the gap list
+
+### Requirement: Interactive role and filter selection
+
+The verdict endpoint SHALL accept the same facet query parameters as the job
+search (e.g. `category`, `seniority`, `regions`), letting the caller recompute
+coverage for an ad-hoc role without modifying the stored profile. When no
+`category` parameter is supplied, the calculation SHALL default to the profile's
+own specializations. The profile's skills are always the measured set and SHALL
+never be taken from the filter parameters.
+
+#### Scenario: Filter overrides the profile's role
+- **WHEN** the caller requests a profile's verdict with `?category=data&seniority=senior`
+- **THEN** coverage is computed over senior data-category vacancies, and the stored profile is unchanged
+
+#### Scenario: Defaults to the profile's specializations
+- **WHEN** the caller requests a profile's verdict with no `category` parameter
+- **THEN** coverage is computed over the union of the profile's saved specializations
+
+#### Scenario: Profile skills are not a filter
+- **WHEN** the caller passes `?skills=rust` while the profile lists "go"
+- **THEN** coverage still measures the profile's "go" skill and "rust" is not treated as an owned skill
+
+### Requirement: Profile summary shows headline coverage
+
+The profile list SHALL show each profile's headline coverage — the `covered`
+count and `coverage_percent` over the profile's own specializations — so the user
+sees the key number without opening the detailed verdict.
+
+#### Scenario: Coverage headline on the profile card
+- **WHEN** the profile list renders a profile whose skills cover 630 of 1000 role vacancies
+- **THEN** the card shows the coverage as 630 and 63%
+
