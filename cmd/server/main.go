@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	sentryfiber "github.com/getsentry/sentry-go/fiber"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -17,6 +18,7 @@ import (
 	"github.com/strelov1/freehire/internal/database"
 	"github.com/strelov1/freehire/internal/handler"
 	"github.com/strelov1/freehire/internal/llm"
+	"github.com/strelov1/freehire/internal/observability"
 	"github.com/strelov1/freehire/internal/search"
 )
 
@@ -29,6 +31,14 @@ func main() {
 	if len(cfg.JWTSecret) < 32 {
 		log.Fatal("config: JWT_SECRET is required and must be at least 32 bytes")
 	}
+
+	// Error reporting is optional and env-gated: no DSN ⇒ Init is a no-op. A
+	// malformed DSN is fatal — a misconfigured gateway must not boot silently.
+	sentryFlush, err := observability.Init(cfg.SentryDSN, cfg.SentryEnvironment)
+	if err != nil {
+		log.Fatalf("sentry: %v", err)
+	}
+	defer sentryFlush()
 
 	// One signal-bound context drives both startup and shutdown: it cancels the pool
 	// connect if a signal arrives mid-startup, and its Done channel is the shutdown
@@ -62,8 +72,23 @@ func main() {
 		TrustedProxies:          []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.1/32"},
 	})
 
-	app.Use(recover.New())
+	// The recover middleware marks each unwound panic via c.Locals so RenderError
+	// won't double-report it: the sentryfiber middleware below already captures the
+	// panic (with a stack) before Fiber re-delivers the recovered error to the
+	// ErrorHandler. The silent handler keeps the previous no-stderr-stack behavior.
+	app.Use(recover.New(recover.Config{
+		EnableStackTrace:  true,
+		StackTraceHandler: func(c *fiber.Ctx, _ any) { c.Locals(handler.LocalPanicReported, true) },
+	}))
 	app.Use(logger.New())
+
+	// Sentry request middleware, wired only when error reporting is configured. It
+	// sits AFTER recover.New so its deferred capture runs first on a panic (reporting
+	// it with request context); Repanic re-raises so recover.New still renders the
+	// standard 500 envelope. Non-panic 5xx are reported separately in handler.RenderError.
+	if cfg.SentryDSN != "" {
+		app.Use(sentryfiber.New(sentryfiber.Options{Repanic: true}))
+	}
 
 	// Search is optional: without a Meilisearch key the client stays nil and the
 	// search endpoint reports 503, leaving the rest of the API fully functional.
