@@ -322,8 +322,10 @@ type Querier interface {
 	// Mark a job as applied for a user. Idempotent and independent of a prior view:
 	// it inserts the row (viewed_at defaults) or updates applied_at in place, and
 	// seeds stage='applied' only when the stage is unset (an advanced stage survives
-	// a re-apply, via COALESCE).
-	MarkJobApplied(ctx context.Context, arg MarkJobAppliedParams) (UserJob, error)
+	// a re-apply, via COALESCE). When (and only when) applied_at transitions from
+	// unset to set, bump the job's materialized applied_count in the same statement;
+	// `prior` sees the pre-upsert applied_at, so a re-apply never re-bumps.
+	MarkJobApplied(ctx context.Context, arg MarkJobAppliedParams) (MarkJobAppliedRow, error)
 	// Record one expired probe: increment the strike counter and, in the same write,
 	// close the job (closed_at) once it reaches the threshold the caller owns — the
 	// two-strike grace that absorbs a transient death signal. Returns the new strike
@@ -363,7 +365,11 @@ type Querier interface {
 	// Record (or refresh) a user's view of a job. Idempotent on (user_id, job_id):
 	// the first view creates the row, a repeat view touches viewed_at. Returns the
 	// row so the caller learns the current applied_at in the same round-trip.
-	RecordJobView(ctx context.Context, arg RecordJobViewParams) (UserJob, error)
+	// When (and only when) the row is created for the first time — no prior
+	// interaction existed — bump the job's materialized view_count in the same
+	// statement. All WITH sub-statements see one snapshot, so `prior` reflects the
+	// pre-upsert state regardless of execution order; a repeat view never re-bumps.
+	RecordJobView(ctx context.Context, arg RecordJobViewParams) (RecordJobViewRow, error)
 	// Count a failed delivery for a subscription's claimed jobs: bump attempts, record
 	// the error, and dead-letter (set failed_at) once attempts reach the max. claimed_at
 	// is left in place — its expiry gates the retry to a later pass and doubles as the
@@ -423,11 +429,6 @@ type Querier interface {
 	// author_label is set verbatim (NULL clears it → anonymous). No matching owner-scoped
 	// row returns no row (→ ErrNotFound).
 	SetSavedSearchPublicSlug(ctx context.Context, arg SetSavedSearchPublicSlugParams) (SavedSearch, error)
-	// Persist the derived résumé-analysis JSON (coherence + advice + analyzed_at) on a
-	// profile, scoped to its owner. Never stores the résumé text — only this derived blob.
-	// Does not bump updated_at (the profile's own fields are unchanged). Returns the affected
-	// row count: 0 means missing or not the caller's (the handler maps that to 404).
-	SetSearchProfileResumeAnalysis(ctx context.Context, arg SetSearchProfileResumeAnalysisParams) (int64, error)
 	// Pause/resume a subscription, scoped to its owner. No matching owner-scoped row
 	// returns no row (the handler maps that to 404).
 	SetSubscriptionActive(ctx context.Context, arg SetSubscriptionActiveParams) (Subscription, error)

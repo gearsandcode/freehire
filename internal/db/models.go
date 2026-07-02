@@ -83,6 +83,8 @@ type Job struct {
 	ContentHash        pgtype.Text        `json:"content_hash"`
 	EnglishLevel       string             `json:"english_level"`
 	Cities             []string           `json:"cities"`
+	ViewCount          int32              `json:"view_count"`
+	AppliedCount       int32              `json:"applied_count"`
 }
 
 type JobReport struct {
@@ -137,7 +139,6 @@ type SearchProfile struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	Specializations []string           `json:"specializations"`
-	ResumeAnalysis  json.RawMessage    `json:"resume_analysis"`
 }
 
 type Subscription struct {
