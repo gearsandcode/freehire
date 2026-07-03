@@ -1,9 +1,10 @@
 ## 1. Shared Chrome-fingerprint transport
 
-- [ ] 1.1 Extract `internal/sources/metahttp.go` into a provider-neutral
+- [x] 1.1 Extract `internal/sources/metahttp.go` into a provider-neutral
   `internal/sources/fingerprinthttp.go` (`fingerprintHTTP` with `get`/`GetHTML`/`GetXML`
   and the `safehttp` SSRF-guarded dialer). Re-point the Meta adapter at it; move the SSRF
-  test (`TestMetaHTTPBlocksInternalTarget` → fingerprint equivalent) and keep it green.
+  test (`TestMetaHTTPBlocksInternalTarget` → `TestFingerprintHTTPBlocksInternalTarget`) and
+  keep it green.
 - [ ] 1.2 In `All()`, build the fingerprint transport **once** and share it across
   `meta`, `bayt`, `gulftalent` (nil-client marker/listing path stays transport-free).
   Confirm `go build ./... && go test ./internal/sources/ -run Fingerprint` passes.

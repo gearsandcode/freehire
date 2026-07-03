@@ -10,7 +10,8 @@ import (
 // metacareers adapts Meta's career site (metacareers.com). It is a boardless single-company
 // source: Fetch ignores e.Board and uses e.Company ("Meta"), like google/amazon. Meta's edge
 // rejects Go's default TLS+HTTP/2 fingerprint, so in production the adapter is wired with the
-// Chrome-fingerprint metaHTTP transport (see metahttp.go) rather than the shared client. The
+// shared Chrome-fingerprint transport (fingerprintHTTP, see fingerprinthttp.go) rather than the
+// shared client. The
 // jobsearch sitemap enumerates job_details URLs; each job page server-renders an
 // application/ld+json JobPosting, so title/description/date/location come from a per-job detail
 // fetch under the shared bounded-concurrency pool, like the other detail-fetching adapters.
@@ -25,8 +26,8 @@ type metacareers struct {
 	http metacareersHTTP
 }
 
-// NewMetaCareers builds the Meta adapter over the given HTTP client (the Chrome-fingerprint
-// metaHTTP in production).
+// NewMetaCareers builds the Meta adapter over the given HTTP client (the shared Chrome-fingerprint
+// fingerprintHTTP in production).
 func NewMetaCareers(c metacareersHTTP) Source { return metacareers{http: c} }
 
 func (metacareers) Provider() string { return "meta" }
