@@ -64,8 +64,15 @@ var systemPrompt = buildSystemPrompt()
 
 func buildSystemPrompt() string {
 	var b strings.Builder
-	b.WriteString("You extract structured facts from an IT job posting and return ONLY a JSON object.\n")
-	b.WriteString("Include a key only when the posting clearly states it; omit anything not stated. Never guess.\n")
+	b.WriteString("You read an IT job posting and return ONLY a JSON object.\n")
+	// summary is the one SYNTHESIZED field and must lead: stating it first, and
+	// exempting it from the omit rule up front, stops a budget model from dropping it
+	// under the "omit anything not stated" directive that governs every other key.
+	b.WriteString("ALWAYS include \"summary\" as the FIRST key: a 1-2 sentence, plain-English synopsis of ")
+	b.WriteString("the role — what the person does day to day and the core technologies. You WRITE this ")
+	b.WriteString("from the posting (the one field you synthesize, not extract); keep it under 400 ")
+	b.WriteString("characters and never invent facts the posting does not support.\n")
+	b.WriteString("For every OTHER key: include it only when the posting clearly states it; omit anything not stated. Never guess.\n")
 	b.WriteString("Enum fields MUST use exactly one of the allowed values below.\n\n")
 	b.WriteString("Allowed enum values:\n")
 
