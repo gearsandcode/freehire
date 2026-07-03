@@ -67,9 +67,6 @@
           </svg>
           <span>FreeHire</span>
         </a>
-        <p class="mt-3 max-w-xs text-sm text-muted-foreground">
-          Free, open-source IT job aggregator.
-        </p>
         <div class="mt-4 flex items-center gap-3">
           {#each socials as social (social.provider)}
             <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external profile URL opened in a new tab; not an internal route -->

@@ -8,6 +8,7 @@
   import { themeStore } from '$lib/theme.svelte';
   import { lockScroll, unlockScroll } from '$lib/scrollLock';
   import { cn } from '$lib/utils';
+  import GithubStars from './GithubStars.svelte';
 
   // The single menu absorbs the site nav, the signed-in account items, the theme
   // toggle, and the auth action — the header's only control besides search.
@@ -31,6 +32,9 @@
     cn(rowBase, isActive(href) ? 'font-medium text-foreground' : 'text-muted-foreground');
   const sectionLabel =
     'px-4 pt-3 pb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground sm:hidden';
+  // Shared icon-button treatment for the bar controls (menu + theme toggle).
+  const iconButton =
+    'size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
   // The theme button only renders inside the open panel (client-only), so no
   // SSR mounted-guard is needed — read the store directly.
@@ -93,9 +97,11 @@
   onkeydown={(e) => e.key === 'Escape' && (open = false)}
 />
 
-<!-- Theme toggle + auth action: defined once, rendered in the mobile bottom bar
-     and inline on desktop. -->
-{#snippet themeAuth()}
+<!-- Theme toggle and auth action: defined once, reused across layouts. On mobile
+     both live deep in the drawer's bottom bar; on desktop the theme toggle is
+     pulled up to the header bar (see the inline cluster below) and only auth
+     stays in the dropdown. -->
+{#snippet themeButton()}
   <button
     type="button"
     role="menuitem"
@@ -108,7 +114,9 @@
       <Sun class="size-4 shrink-0" /> Dark theme
     {/if}
   </button>
+{/snippet}
 
+{#snippet authButton()}
   {#if isAuthenticated()}
     <button
       type="button"
@@ -130,7 +138,12 @@
   {/if}
 {/snippet}
 
-<div class="relative" bind:this={root}>
+<div class="relative flex items-center gap-1" bind:this={root}>
+  <!-- Desktop only: GitHub stars on the left, theme toggle on the right — the
+       menu button sits between them, giving three controls on the bar. On mobile
+       both collapse into the drawer (below), leaving just the menu button here. -->
+  <GithubStars class="hidden sm:inline-flex" />
+
   <button
     type="button"
     aria-label="Menu"
@@ -145,7 +158,7 @@
       e.stopPropagation();
       open = !open;
     }}
-    class="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    class={cn('inline-flex', iconButton)}
   >
     {#if open}
       <X class="size-5" />
@@ -219,17 +232,34 @@
           {/if}
         {/if}
 
-        <!-- Desktop-only: theme + auth inline at the end of the dropdown. -->
+        <!-- Desktop-only: auth inline at the end of the dropdown (theme lives on
+             the bar). -->
         <div class="hidden sm:block">
           <div class="my-1 h-px bg-border"></div>
-          {@render themeAuth()}
+          {@render authButton()}
         </div>
       </div>
 
-      <!-- Mobile-only: theme + auth pinned to the bottom of the drawer. -->
+      <!-- Mobile-only: GitHub + theme + auth pinned to the bottom of the drawer. -->
       <div class="shrink-0 border-t border-border p-2 sm:hidden">
-        {@render themeAuth()}
+        <GithubStars variant="row" class={cn(rowBase, 'text-muted-foreground')} />
+        {@render themeButton()}
+        {@render authButton()}
       </div>
     </div>
   {/if}
+
+  <!-- Desktop only: theme toggle pinned to the far right of the bar. -->
+  <button
+    type="button"
+    aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+    onclick={() => themeStore.toggle()}
+    class={cn('hidden sm:inline-flex', iconButton)}
+  >
+    {#if isDark}
+      <Moon class="size-5" />
+    {:else}
+      <Sun class="size-5" />
+    {/if}
+  </button>
 </div>
