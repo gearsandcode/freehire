@@ -66,8 +66,16 @@
 - [x] 4.3 Ops note (recorded in proposal Impact + design Migration Plan): after the first prod
   ingest of `sources/bayt.yml` / `sources/gulftalent.yml`, run `cmd/backfill-derive` +
   `make reindex`, then re-check the `regions=mena` company facet against the 2,357 baseline.
-  Two new cron schedules (one per board file) land in `freehire-ops`. **Follow-up seam:**
-  harvest the Gulf mega-employers' enterprise ATS tenants (Workday/SuccessFactors/Taleo/Oracle).
+  Two new cron schedules (one per board file) land in `freehire-ops`. **Follow-up seam —
+  high-value Gulf enterprises on freehire-SUPPORTED enterprise ATS, needing per-tenant board
+  ids validated against the adapter** (harvested tenant hints): NEOM → Eightfold
+  (`careers.neom.com`, board=host; empty at check time, re-add when hiring); Almarai →
+  SuccessFactors (`career5.successfactors.eu` company `AlMaraiP`); stc → SuccessFactors
+  (`careers.stc.com.sa`, tenant `5075ac53`); Aramco (`careers.aramco.com`) / SABIC
+  (`jobs.sabic.com`) → SuccessFactors; SNB (`snbtalent.alahli.com`) / Mobily (Oracle Recruiting
+  Cloud `CX_2001`) → Oracle; HungerStation → Workday (`deliveryhero.wd3.myworkdayjobs.com`);
+  Nana → Workable (`nana-grocery-direct`, empty now). These are the real MENA depth, addable in a
+  focused follow-up PR.
 
 ## 5. Verification
 
