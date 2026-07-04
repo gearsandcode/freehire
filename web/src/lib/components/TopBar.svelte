@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
-  import { replaceState } from '$app/navigation';
+  import { afterNavigate, replaceState } from '$app/navigation';
   import { authDialog, openAuthDialog, closeAuthDialog } from '$lib/auth-dialog.svelte';
   import { cn } from '$lib/utils';
   import AuthDialog from './AuthDialog.svelte';
@@ -45,10 +44,15 @@
   // singleton (see auth-dialog.svelte), so deep components — like a job's Save
   // button — can prompt sign-in through the same dialog this header renders.
 
-  // Surface auth prompts carried in the URL once on the client, then clean it.
+  // Surface auth prompts carried in the URL on the client, then clean it.
   // ?auth_error: a failed OAuth callback. ?auth=required: a guarded page (e.g.
-  // /my/jobs) bounced a signed-out visitor here to sign in. In onMount so it
-  // never runs during SSR.
+  // /my/jobs, /jobs/swipe) bounced a signed-out visitor here to sign in. Runs in
+  // afterNavigate — not onMount — because this header lives in the persistent root
+  // layout: a guard that redirects here via client-side navigation never remounts
+  // it, so onMount would fire only on a cold load and miss the in-app bounce.
+  // afterNavigate covers both the initial load and every later navigation, and
+  // stays off the SSR path. The replaceState clean-up below removes the params, so
+  // the immediate re-run sees none and no loop forms.
   // Only accept a same-origin rooted path as the post-login redirect — never a
   // scheme-relative "//host" or absolute URL — mirroring the backend's
   // SafeReturnPath, so a crafted link can't bounce the user off-site.
@@ -57,7 +61,7 @@
     return raw;
   }
 
-  onMount(() => {
+  afterNavigate(() => {
     const params = page.url.searchParams;
     if (params.has('auth_error')) {
       // A real failure: seed the dialog's error banner.
