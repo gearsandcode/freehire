@@ -54,12 +54,19 @@
   by Bayt's Akamai** — bumped to `Chrome_144` (verified 200 for Bayt, GulfTalent, and Meta).
   GulfTalent validated at transport (sitemap 200) + parse (unit tests) level; its full ~23k
   crawl runs on the prod cron rather than in the bounded smoke.
-- [ ] 4.2 Curate ~40–60 largest ME employers (KSA/PIF, UAE, Qatar, Egypt clusters), detect
-  each one's existing-supported ATS, and add one live-validated board entry per company to
-  the matching `sources/<provider>.yml`.
-- [ ] 4.3 Ops note in the change: after first prod ingest run `cmd/backfill-derive` +
-  `make reindex`; re-check the `regions=mena` company facet count rose from the 2,357
-  baseline.
+- [x] 4.2 Mega-employer seed — **finding: ~0 net-new Gulf boards via keyless ATS**. Live
+  curl-probed the major ME tech employers (Careem, Tamara, Sylndr, Ziina, Lean, Thndr, …)
+  against greenhouse/lever/ashby/smartrecruiters/workable/recruitee. Every confirmed keyless-ATS
+  board was **already in `sources/*.yml`** (only yassir/Algeria was net-new, and non-Gulf, so
+  skipped). The large Gulf enterprises (Aramco, SABIC, banks, telecoms, Emirates, ADNOC) run
+  enterprise ATS (Workday/SuccessFactors/Taleo/Oracle) with complex per-tenant board ids — a
+  separate harvest, **noted as a follow-up seam**, not forced into this change. This validates
+  the strategy: the MENA breadth comes from the two aggregators, not the seed.
+- [x] 4.3 Ops note (recorded in proposal Impact + design Migration Plan): after the first prod
+  ingest of `sources/bayt.yml` / `sources/gulftalent.yml`, run `cmd/backfill-derive` +
+  `make reindex`, then re-check the `regions=mena` company facet against the 2,357 baseline.
+  Two new cron schedules (one per board file) land in `freehire-ops`. **Follow-up seam:**
+  harvest the Gulf mega-employers' enterprise ATS tenants (Workday/SuccessFactors/Taleo/Oracle).
 
 ## 5. Verification
 
