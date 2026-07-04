@@ -47,9 +47,13 @@
 
 ## 4. Live validation + mega-employer seed
 
-- [ ] 4.1 Live-validate both adapters: `go run ./cmd/ingest sources/bayt.yml` and
-  `... sources/gulftalent.yml` against a scratch DB; confirm real MENA jobs upsert with
-  correct company/location and no duplicates on a second run.
+- [x] 4.1 Live-validate: bayt/bahrain ingested end-to-end into a scratch Postgres — 237
+  real jobs, failed=0, company from the posting, location + derived `{bh}` country facet
+  correct; re-run added only new live-feed postings with no dedup errors (unique constraint
+  holds). **Surfaced and fixed a production bug: the transport's `Chrome_133` profile was 403'd
+  by Bayt's Akamai** — bumped to `Chrome_144` (verified 200 for Bayt, GulfTalent, and Meta).
+  GulfTalent validated at transport (sitemap 200) + parse (unit tests) level; its full ~23k
+  crawl runs on the prod cron rather than in the bounded smoke.
 - [ ] 4.2 Curate ~40–60 largest ME employers (KSA/PIF, UAE, Qatar, Egypt clusters), detect
   each one's existing-supported ATS, and add one live-validated board entry per company to
   the matching `sources/<provider>.yml`.
