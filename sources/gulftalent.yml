@@ -1,0 +1,7 @@
+# GulfTalent.com — a major Gulf/MENA job board. Boardless multi-company aggregator: one crawl
+# enumerates the sitemap index, follows the job-posting shards (sitemap_jx0NN.xml), and reads each
+# posting's self-contained schema.org JobPosting. The employer comes from the posting, so `company`
+# here is only a placeholder label. GulfTalent is behind an Akamai edge, so the adapter crawls it
+# over the shared Chrome-fingerprint transport.
+- company: GulfTalent
+  provider: gulftalent

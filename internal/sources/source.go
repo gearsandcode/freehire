@@ -277,9 +277,11 @@ func All(c HTTPClient) map[string]Source {
 	if c == nil {
 		registry["meta"] = NewMetaCareers(nil)
 		registry["bayt"] = NewBayt(nil)
+		registry["gulftalent"] = NewGulfTalent(nil)
 	} else if fp, err := newFingerprintHTTP(); err == nil {
 		registry["meta"] = NewMetaCareers(fp)
 		registry["bayt"] = NewBayt(fp)
+		registry["gulftalent"] = NewGulfTalent(fp)
 	}
 	return registry
 }

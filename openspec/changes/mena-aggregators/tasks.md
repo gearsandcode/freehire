@@ -31,18 +31,19 @@
 
 ## 3. GulfTalent adapter (`internal/sources/gulftalent.go`)
 
-- [ ] 3.1 Record fixtures: `sitemap.xml` index, one `jl0NN` job sitemap shard, and a real
-  detail page.
-- [ ] 3.2 Sitemap enumeration: failing test that the index + shard fixtures yield all
-  job-detail URLs across every `jl` shard; then implement the enumerator.
-- [ ] 3.3 Detail JSON-LD parse: failing test that a detail fixture yields a `Job`
-  (title/description/company/location/posted-at/`ExternalID` from the URL id); then
-  implement. A detail with no `JobPosting` and an unparseable index both error.
-- [ ] 3.4 `Fetch` wiring + markers (`Provider() == "gulftalent"`, `boardless()`,
-  `aggregator()`), company from the posting, drop company-less/id-less, bounded fan-out;
-  test the re-crawl dedup identity.
-- [ ] 3.5 Register `NewGulfTalent(fp)` in `All()`; add `sources/gulftalent.yml`. Confirm
-  config validation accepts the board file.
+- [x] 3.1 Build faithful inline fixtures (`gtSitemapIndexXML`/`gtShardXML`/`gtDetailHTML`)
+  mirroring the real sitemap index, a `jx` shard, and a detail JobPosting captured live.
+- [x] 3.2 Sitemap enumeration: failing test that the index + shard fixtures yield the
+  job-detail URLs, following ONLY the `jx` job-posting shards (jl/jc/co skipped); implemented
+  the enumerator. Live capture corrected the shard marker from `jl` to `jx`.
+- [x] 3.3 Detail JSON-LD parse: failing test that a detail fixture yields a `Job`
+  (title/description/company/location/posted-at RFC3339/`ExternalID` from the URL id);
+  implemented. A detail with no `JobPosting`/no company is dropped; an unparseable index errors.
+- [x] 3.4 `Fetch` wiring + markers (`Provider() == "gulftalent"`, `boardless()`,
+  `aggregator()`), company from the posting, drop company-less/id-less, bounded fan-out
+  (`gulftalentDetailWorkers = 4`). Dedup identity is the URL id.
+- [x] 3.5 Register `NewGulfTalent(fp)` in `All()` over the shared fingerprint transport; add
+  `sources/gulftalent.yml`. Config validation accepts the board file (verified via `cmd/ingest`).
 
 ## 4. Live validation + mega-employer seed
 

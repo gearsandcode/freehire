@@ -4,21 +4,24 @@
 
 The system SHALL provide a `gulftalent` source adapter that crawls GulfTalent.com into the
 catalogue by enumerating its sitemap index. The adapter is a **boardless aggregator**: it
-fetches `https://www.gulftalent.com/sitemap.xml`, follows the job-listing sitemaps
-(`jl000..jl00N`), collects the job-detail URLs, fetches each detail page, and parses the
+fetches `https://www.gulftalent.com/sitemap.xml`, follows the job-posting shards
+(`sitemap_jx0NN.xml` — the `jl`/`jc`/`co` shards are category, company, and course pages that
+carry no `JobPosting`), collects the job-detail URLs, fetches each detail page, and parses the
 embedded `JobPosting` JSON-LD. The crawl is keyless.
 
 #### Scenario: Sitemap enumeration yields all listed postings
 
 - **WHEN** the adapter crawls GulfTalent
-- **THEN** it returns one `Job` per job URL enumerated across the job-listing sitemaps,
-  each populated from the detail page's `JobPosting` JSON-LD (title, HTML description,
-  company, free-text location, apply/detail URL, posted-at)
+- **THEN** it returns one `Job` per job URL enumerated across the job-posting shards, each
+  populated from the detail page's `JobPosting` JSON-LD (title, HTML description, company,
+  free-text location, apply/detail URL, posted-at)
 
-#### Scenario: All job sitemaps are followed
+#### Scenario: Only job-posting shards are followed
 
-- **WHEN** the sitemap index lists multiple job-listing sitemaps
-- **THEN** the adapter follows each one, so postings in later sitemap shards are not
+- **WHEN** the sitemap index lists both job-posting shards (`jx`) and category/company shards
+  (`jl`/`jc`/`co`)
+- **THEN** the adapter follows only the `jx` job-posting shards, so category and company pages
+  never become jobs, and every `jx` shard is followed so postings in later shards are not
   dropped
 
 ### Requirement: Self-contained aggregator company identity
