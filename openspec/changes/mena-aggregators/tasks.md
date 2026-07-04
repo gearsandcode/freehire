@@ -54,14 +54,15 @@
   by Bayt's Akamai** — bumped to `Chrome_144` (verified 200 for Bayt, GulfTalent, and Meta).
   GulfTalent validated at transport (sitemap 200) + parse (unit tests) level; its full ~23k
   crawl runs on the prod cron rather than in the bounded smoke.
-- [x] 4.2 Mega-employer seed — **finding: ~0 net-new Gulf boards via keyless ATS**. Live
-  curl-probed the major ME tech employers (Careem, Tamara, Sylndr, Ziina, Lean, Thndr, …)
-  against greenhouse/lever/ashby/smartrecruiters/workable/recruitee. Every confirmed keyless-ATS
-  board was **already in `sources/*.yml`** (only yassir/Algeria was net-new, and non-Gulf, so
-  skipped). The large Gulf enterprises (Aramco, SABIC, banks, telecoms, Emirates, ADNOC) run
-  enterprise ATS (Workday/SuccessFactors/Taleo/Oracle) with complex per-tenant board ids — a
-  separate harvest, **noted as a follow-up seam**, not forced into this change. This validates
-  the strategy: the MENA breadth comes from the two aggregators, not the seed.
+- [x] 4.2 Mega-employer seed — **finding: the keyless-ATS seed is largely redundant; +2 net-new
+  Gulf boards**. Live-probed the major ME tech employers (Careem, Tamara, Sylndr, Ziina, Lean,
+  Thndr, Unifonic, Rewaa, …) against greenhouse/lever/ashby/smartrecruiters/workable/recruitee.
+  Nearly all confirmed keyless-ATS boards were **already in `sources/*.yml`**; net-new and added:
+  **Foodics** and **Salla** (both Saudi, Workable — 25 and several live jobs). The large Gulf
+  enterprises (Aramco, SABIC, banks, telecoms, Emirates, ADNOC, HungerStation) run enterprise ATS
+  (Workday/SuccessFactors/Taleo/Oracle) with complex per-tenant board ids — a separate harvest,
+  **noted as a follow-up seam**, not forced into this change. This validates the strategy: the
+  MENA breadth comes from the two aggregators, with the seed a thin top-up.
 - [x] 4.3 Ops note (recorded in proposal Impact + design Migration Plan): after the first prod
   ingest of `sources/bayt.yml` / `sources/gulftalent.yml`, run `cmd/backfill-derive` +
   `make reindex`, then re-check the `regions=mena` company facet against the 2,357 baseline.
