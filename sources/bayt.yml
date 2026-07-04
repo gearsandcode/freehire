@@ -1,0 +1,30 @@
+# Bayt.com — the dominant Gulf/MENA job board. Board-based multi-company aggregator: each
+# entry is a COUNTRY scope (board = Bayt country slug), and one crawl walks that country's
+# paginated listings, reading each posting's self-contained schema.org JobPosting. The employer
+# comes from the posting, so `company` here is only a per-scope label. Country slugs are
+# live-validated (each returns a populated listing). Bayt is behind an Akamai/Cloudflare edge, so
+# the adapter crawls it over the shared Chrome-fingerprint transport.
+- company: Bayt Saudi Arabia
+  provider: bayt
+  board: saudi-arabia
+- company: Bayt UAE
+  provider: bayt
+  board: uae
+- company: Bayt Qatar
+  provider: bayt
+  board: qatar
+- company: Bayt Kuwait
+  provider: bayt
+  board: kuwait
+- company: Bayt Bahrain
+  provider: bayt
+  board: bahrain
+- company: Bayt Oman
+  provider: bayt
+  board: oman
+- company: Bayt Egypt
+  provider: bayt
+  board: egypt
+- company: Bayt Jordan
+  provider: bayt
+  board: jordan

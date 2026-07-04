@@ -3,11 +3,12 @@
 ### Requirement: Bayt per-country listing crawl
 
 The system SHALL provide a `bayt` source adapter that crawls Bayt.com's paginated
-per-country job listings into the catalogue. The adapter is a **boardless aggregator**:
-its configured entries are country scopes (e.g. `saudi-arabia`, `uae`, `qatar`, `kuwait`,
-`bahrain`, `oman`, `egypt`, `jordan`), not company boards. For each configured country it
-walks the listing pages, collects job-detail URLs, fetches each detail page, and parses
-the embedded `JobPosting` JSON-LD. The crawl is keyless (no API key).
+per-country job listings into the catalogue. The adapter is a **board-based multi-company
+aggregator**: each configured entry is a COUNTRY scope carried in the board field (e.g.
+`saudi-arabia`, `uae`, `qatar`, `kuwait`, `bahrain`, `oman`, `egypt`, `jordan`), not a
+per-company board. For each configured country it walks the listing pages, collects
+job-detail URLs, fetches each detail page, and parses the embedded `JobPosting` JSON-LD. The
+crawl is keyless (no API key).
 
 #### Scenario: Country scope yields all listed postings
 

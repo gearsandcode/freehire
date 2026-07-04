@@ -11,21 +11,23 @@
 
 ## 2. Bayt adapter (`internal/sources/bayt.go`)
 
-- [ ] 2.1 Record fixtures into `internal/sources/testdata/`: a real Bayt country listing
-  page and a real Bayt job-detail page (captured via the fingerprint client), for
-  offline parse tests.
-- [ ] 2.2 JSON-LD detail parse: failing test that a detail fixture yields a `Job` with
+- [x] 2.1 Build faithful inline HTML fixtures (`baytDetailHTML`/`baytListingHTML`) mirroring
+  the real Bayt JSON-LD structure captured from a live page — matching the repo's JSON-LD
+  adapter pattern (metacareers/globalpayments use inline builders, not `testdata/`), which is
+  deterministic and network-free.
+- [x] 2.2 JSON-LD detail parse: failing test that a detail fixture yields a `Job` with
   title, HTML description, company (`hiringOrganization.name`), free-text location
-  (`jobLocation`), posted-at (`datePosted`), and `ExternalID` (numeric id from
-  URL/`identifier`); then implement the parser. A detail with no `JobPosting` errors.
-- [ ] 2.3 Listing pagination: failing test that a listing fixture yields all job-detail
-  hrefs and that pagination stops on a page with no new links; then implement the walker.
-- [ ] 2.4 `Fetch` wiring + markers: implement `Provider() == "bayt"`, `boardless()`,
-  `aggregator()`; company from the posting (drop company-less and id-less postings);
-  bounded detail fan-out via `fetchDetails`. Test the re-crawl dedup identity
-  (same posting → same `ExternalID`).
-- [ ] 2.5 Register `NewBayt(fp)` in `All()`; add `sources/bayt.yml` with the country
-  scopes (sa/ae/qa/kw/bh/om/eg/jo). Confirm config validation accepts the board file.
+  (`jobLocation.address` locality + ISO country), posted-at (`datePosted`), and `ExternalID`
+  (numeric id from the URL). A detail with no `JobPosting`/no company is dropped.
+- [x] 2.3 Listing pagination: failing test that a listing fixture yields all job-detail
+  hrefs and that pagination stops on a page with no new links; implemented the walker.
+- [x] 2.4 `Fetch` wiring + marker: `Provider() == "bayt"`, board-based (board = country slug),
+  `aggregator()` marker; company from the posting (drop company-less and id-less postings);
+  bounded detail fan-out (`baytDetailWorkers = 3`, conservative for Bayt's throttling edge).
+  Re-crawl dedup identity is the URL id.
+- [x] 2.5 Register `NewBayt(fp)` in `All()` over the shared fingerprint transport; add
+  `sources/bayt.yml` with the 8 live-validated country scopes (sa/ae/qa/kw/bh/om/eg/jo).
+  Config validation accepts the board file (verified via `cmd/ingest`).
 
 ## 3. GulfTalent adapter (`internal/sources/gulftalent.go`)
 

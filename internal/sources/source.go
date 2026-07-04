@@ -276,8 +276,10 @@ func All(c HTTPClient) map[string]Source {
 	// Meta's edge.
 	if c == nil {
 		registry["meta"] = NewMetaCareers(nil)
+		registry["bayt"] = NewBayt(nil)
 	} else if fp, err := newFingerprintHTTP(); err == nil {
 		registry["meta"] = NewMetaCareers(fp)
+		registry["bayt"] = NewBayt(fp)
 	}
 	return registry
 }
