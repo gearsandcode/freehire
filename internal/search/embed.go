@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"sync"
 )
 
 // teiMaxBatch caps how many inputs go in one TEI /v1/embeddings call. TEI rejects a
@@ -16,38 +18,98 @@ const teiMaxBatch = 32
 // jobPassage renders a job document into the text embedded for semantic retrieval.
 // e5 is asymmetric: the corpus side carries the "passage:" prefix and the query side
 // carries "query:" (see EmbedText), so they must be embedded the same way to be
-// comparable. This mirrors the document template Meilisearch used to render, now that
-// embedding runs in Go (see embedBatch). doc.Description is already capped at index
-// time (maxIndexedDescriptionRunes), so this stays within e5's token window.
+// comparable.
+//
+// It prefers the enrichment summary over the raw description: the summary is a short,
+// model-written synopsis (capped well under e5's 512-token window) that captures the
+// whole role — including requirements a long description buries past the truncation
+// point — so it embeds the job more faithfully than the head-truncated description, and
+// its distilled form is closer to a CV query. Unenriched jobs fall back to the
+// description (already capped at maxIndexedDescriptionRunes).
 func jobPassage(d JobDocument) string {
-	return "passage: " + d.Title + " at " + d.Company + ". " + d.Description
+	body := d.Description
+	if s := d.Enrichment.Summary; s != "" {
+		body = s
+	}
+	return "passage: " + d.Title + " at " + d.Company + ". " + body
 }
 
-// embedBatch turns texts into vectors by calling TEI's OpenAI-compatible
-// /v1/embeddings directly, in input order. We embed here and store the result as a
-// userProvided Meilisearch embedder (see jobEmbedder) rather than letting Meili's rest
-// embedder reach TEI itself: the engine rejects the loopback TEI URI, and embedding in
-// one place keeps the job corpus and the CV query on an identical path (one model, one
-// server → one vector space). Inputs are chunked to TEI's per-call batch limit.
+// embedBatch turns texts into vectors, in input order, by calling the embedding backend
+// (see embedChunk). We embed here and store the result as a userProvided Meilisearch
+// embedder (see jobEmbedder) rather than letting Meili's rest embedder reach the server
+// itself: the engine rejects the loopback TEI URI, and embedding in one place keeps the
+// job corpus and the CV query on an identical path (one model, one server → one vector
+// space). Inputs are chunked to the backend's per-call batch limit, and up to
+// embedConcurrency chunks run in flight — a remote GPU endpoint needs the concurrency to
+// hide per-call latency (the CPU-bound host2 TEI runs it at 1).
 func (c *Client) embedBatch(ctx context.Context, inputs []string) ([][]float64, error) {
-	out := make([][]float64, 0, len(inputs))
+	type span struct{ start, end int }
+	var chunks []span
 	for start := 0; start < len(inputs); start += teiMaxBatch {
 		end := start + teiMaxBatch
 		if end > len(inputs) {
 			end = len(inputs)
 		}
-		vecs, err := c.embedChunk(ctx, inputs[start:end])
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, vecs...)
+		chunks = append(chunks, span{start, end})
+	}
+
+	conc := c.embedConcurrency
+	if conc < 1 {
+		conc = 1
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Each chunk writes its vectors into its own slot, so the flattened result stays in
+	// input order regardless of completion order.
+	results := make([][][]float64, len(chunks))
+	sem := make(chan struct{}, conc)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var firstErr error
+	for i, ch := range chunks {
+		wg.Add(1)
+		go func(i int, ch span) {
+			defer wg.Done()
+			select {
+			case sem <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
+			defer func() { <-sem }()
+			vecs, err := c.embedChunk(ctx, inputs[ch.start:ch.end])
+			if err != nil {
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = err
+					cancel() // stop the remaining chunks on the first failure
+				}
+				mu.Unlock()
+				return
+			}
+			results[i] = vecs
+		}(i, ch)
+	}
+	wg.Wait()
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	out := make([][]float64, 0, len(inputs))
+	for _, r := range results {
+		out = append(out, r...)
 	}
 	return out, nil
 }
 
-// embedChunk embeds one TEI-sized batch and returns the vectors in input order.
+// embedChunk embeds one TEI-sized batch and returns the vectors in input order. It
+// speaks TEI's native `/embed` shape — `{"inputs": [...]}` in, an array of vectors out
+// — which every backend we target accepts: the host2 TEI (/embed, bare array) and an
+// HF Inference Endpoint (root, `{"embeddings": [...]}`). Over-long inputs (e5 caps at
+// 512 tokens) are truncated server-side (host2 TEI's --auto-truncate; HF truncates by
+// default), so no per-input length handling is needed here.
 func (c *Client) embedChunk(ctx context.Context, inputs []string) ([][]float64, error) {
-	body, err := json.Marshal(map[string]any{"input": inputs, "model": embedderModel})
+	body, err := json.Marshal(map[string]any{"inputs": inputs})
 	if err != nil {
 		return nil, fmt.Errorf("search: embed marshal: %w", err)
 	}
@@ -56,6 +118,9 @@ func (c *Client) embedChunk(ctx context.Context, inputs []string) ([][]float64, 
 		return nil, fmt.Errorf("search: embed request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if c.embedKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.embedKey)
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("search: embed call: %w", err)
@@ -64,25 +129,35 @@ func (c *Client) embedChunk(ctx context.Context, inputs []string) ([][]float64, 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("search: embed: unexpected status %d", resp.StatusCode)
 	}
-	var out struct {
-		Data []struct {
-			Embedding []float64 `json:"embedding"`
-		} `json:"data"`
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("search: embed read: %w", err)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("search: embed decode: %w", err)
+	vecs, err := parseEmbeddings(raw)
+	if err != nil {
+		return nil, err
 	}
-	if len(out.Data) != len(inputs) {
-		return nil, fmt.Errorf("search: embed: got %d vectors for %d inputs", len(out.Data), len(inputs))
-	}
-	vecs := make([][]float64, len(out.Data))
-	for i, d := range out.Data {
-		if len(d.Embedding) == 0 {
-			return nil, fmt.Errorf("search: embed: empty vector at %d", i)
-		}
-		vecs[i] = d.Embedding
+	if len(vecs) != len(inputs) {
+		return nil, fmt.Errorf("search: embed: got %d vectors for %d inputs", len(vecs), len(inputs))
 	}
 	return vecs, nil
+}
+
+// parseEmbeddings decodes a TEI-style embeddings response, tolerating both the bare
+// array of vectors (`[[...], ...]`, TEI /embed) and the object form
+// (`{"embeddings": [[...], ...]}`, HF Inference Endpoints).
+func parseEmbeddings(raw []byte) ([][]float64, error) {
+	var bare [][]float64
+	if err := json.Unmarshal(raw, &bare); err == nil && len(bare) > 0 {
+		return bare, nil
+	}
+	var wrapped struct {
+		Embeddings [][]float64 `json:"embeddings"`
+	}
+	if err := json.Unmarshal(raw, &wrapped); err == nil && len(wrapped.Embeddings) > 0 {
+		return wrapped.Embeddings, nil
+	}
+	return nil, fmt.Errorf("search: embed: unrecognized response shape")
 }
 
 // semanticDocument is a JobDocument carrying its precomputed embedding for the
