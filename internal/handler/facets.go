@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"net/url"
+	"slices"
 	"sort"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,6 +18,9 @@ import (
 // means search is unconfigured and the endpoint reports 503.
 type facetCounter interface {
 	FacetCounts(ctx context.Context, p search.FacetParams) (search.FacetResult, error)
+	// DisjunctiveFacetCounts counts each facet under its own reduced filter (see
+	// the disjunctive mode of JobFacets) plus the total under the full filter.
+	DisjunctiveFacetCounts(ctx context.Context, query string, reqs []search.FacetReq, totalFilter any) (search.FacetResult, error)
 }
 
 // facetExtra describes a facetable attribute that is not a string-equality facet
@@ -65,6 +70,52 @@ func facetAttributes() []string {
 	return attrs
 }
 
+// locationFacetParams are the geography facets that share ONE OR-group in
+// FilterFromValues (their included values widen the results together, not
+// intersect). Disjunctive counting of any one of them must drop the whole group's
+// contribution, not just that param — otherwise selecting a country would zero
+// every sibling region (the reverse of what disjunctive mode is for).
+var locationFacetParams = []string{"regions", "countries", "cities"}
+
+// facetReqs builds one disjunctive request per distribution attribute: each
+// counted under the filter with its own facet's params removed, so a facet's
+// selection doesn't hide its alternatives. For a location facet, the whole
+// location OR-group is removed (see locationFacetParams).
+func facetReqs(vals url.Values) []search.FacetReq {
+	param := facetParamByAttr()
+	attrs := facetAttributes()
+	reqs := make([]search.FacetReq, 0, len(attrs))
+	for _, attr := range attrs {
+		drop := []string{param[attr]}
+		if slices.Contains(locationFacetParams, param[attr]) {
+			drop = locationFacetParams
+		}
+		reqs = append(reqs, search.FacetReq{
+			Attr:   attr,
+			Filter: search.FilterFromValues(withoutParams(vals, drop)),
+		})
+	}
+	return reqs
+}
+
+// withoutParams returns a copy of vals with each named facet's params dropped (the
+// bare param plus its `_exclude` / `_mode` variants), leaving every other facet
+// intact.
+func withoutParams(vals url.Values, params []string) url.Values {
+	drop := make(map[string]bool, len(params)*3)
+	for _, p := range params {
+		drop[p], drop[p+"_exclude"], drop[p+"_mode"] = true, true, true
+	}
+	out := make(url.Values, len(vals))
+	for k, v := range vals {
+		if drop[k] {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
 // facetParamByAttr inverts the facet vocabulary (index attribute → public query
 // param) so the response is keyed the way clients filter: "enrichment.seniority"
 // is exposed as "seniority", hiding the index's internal dot-path structure.
@@ -88,11 +139,22 @@ func (a *API) JobFacets(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusServiceUnavailable, "search is not available")
 	}
 
-	res, err := a.facets.FacetCounts(c.Context(), search.FacetParams{
-		Query:  c.Query("q"),
-		Filter: buildSearchFilter(c),
-		Facets: facetAttributes(),
-	})
+	q := c.Query("q")
+	var res search.FacetResult
+	var err error
+	if c.QueryBool("disjunctive") {
+		// Disjunctive: each facet counted under the full filter minus its own
+		// selection, so a selected facet still shows its siblings (the live-modal
+		// experience). The total stays the full-filter count.
+		vals, _ := url.ParseQuery(string(c.Request().URI().QueryString()))
+		res, err = a.facets.DisjunctiveFacetCounts(c.Context(), q, facetReqs(vals), search.FilterFromValues(vals))
+	} else {
+		res, err = a.facets.FacetCounts(c.Context(), search.FacetParams{
+			Query:  q,
+			Filter: buildSearchFilter(c),
+			Facets: facetAttributes(),
+		})
+	}
 	if err != nil {
 		return err
 	}
