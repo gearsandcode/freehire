@@ -120,10 +120,15 @@ export function jobPostingJsonLd(job: Job, origin: string): Record<string, unkno
     const regions = applicantRegions(job.regions);
     if (regions) ld.applicantLocationRequirements = regions;
   } else if (job.location) {
-    ld.jobLocation = {
-      '@type': 'Place',
-      address: { '@type': 'PostalAddress', addressLocality: job.location },
+    // Google accepts a PostalAddress with just locality; add the ISO country code
+    // when the geo dictionary pinned one (job.countries is alpha-2), never a made-up
+    // street/postal code — mismatched structured data is a ranking liability.
+    const address: Record<string, unknown> = {
+      '@type': 'PostalAddress',
+      addressLocality: job.location,
     };
+    if (job.countries?.[0]) address.addressCountry = job.countries[0].toUpperCase();
+    ld.jobLocation = { '@type': 'Place', address };
   }
 
   if (e.salary_min != null || e.salary_max != null) {
