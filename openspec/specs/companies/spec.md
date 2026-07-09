@@ -57,12 +57,14 @@ by a case-insensitive substring match on the company `name`. An absent or empty
 `q` SHALL return the unfiltered list.
 
 The endpoint SHALL additionally accept repeatable facet query parameters —
-`collections`, `regions`, `countries`, `domains`, `company_type`, and
-`company_size` — each filtering against the company's corresponding denormalized
-array (`collections` and the derived facet arrays) by **array overlap**: a company
-matches a facet when its array shares at least one value with the requested values
-(OR within a facet), and a company must match every provided facet (AND across
-facets). Facet filters SHALL compose with the `q` name search. An absent facet
+`collections`, `regions`, `countries`, `domains`, `company_type`, `company_size`,
+and `remote_regions` — each filtering against the company's corresponding
+denormalized array by **array overlap**: a company matches a facet when its array
+shares at least one value with the requested values (OR within a facet), and a
+company must match every provided facet (AND across facets). The `remote_regions`
+facet filters against the curated `companies.remote_regions` column (see the
+`company-remote-regions` capability), independent of the job-derived `regions`
+facet. Facet filters SHALL compose with the `q` name search. An absent facet
 parameter SHALL not constrain the list.
 
 When any filter (`q` or a facet) is applied, the list `meta.total` SHALL report
@@ -109,6 +111,19 @@ the filtered results is correct.
   **and** have `startup` among their `company_types` **and** whose name matches
   `lab`
 
+#### Scenario: Filtering by remote-hiring regions
+
+- **WHEN** a client requests `GET /api/v1/companies?remote_regions=eu`
+- **THEN** the response contains only companies whose `remote_regions` array
+  contains `eu`, and `meta.total` is the count of such companies
+
+#### Scenario: The remote-regions facet is independent of the job-derived regions facet
+
+- **WHEN** a company has `remote_regions` `{eu}` but its open jobs derive
+  `regions` `{north_america}`
+- **THEN** the company matches `remote_regions=eu` and does not match
+  `regions=eu`
+
 ### Requirement: Company job counts are denormalized and periodically recomputed
 
 The system SHALL store each company's count of open jobs (`closed_at IS NULL`) in
@@ -118,7 +133,9 @@ denormalized columns. Both SHALL be maintained by the same periodic recompute (a
 scheduled worker), not by a synchronous write on the job ingest/close paths, so
 they are eventually consistent with the `jobs` table within the recompute
 interval. A company with no open jobs SHALL have `job_count = 0` and empty facet
-arrays.
+arrays. The recompute SHALL NOT read or write the curated `remote_regions` column
+(owned by the `company-remote-regions` backfill), so a backfilled value survives
+every recompute.
 
 #### Scenario: Recompute reflects only open jobs
 
@@ -145,6 +162,13 @@ arrays.
   already equal the freshly computed values
 - **THEN** that company's row is not rewritten (the recompute reports it as
   unchanged)
+
+#### Scenario: Recompute leaves curated remote_regions untouched
+
+- **WHEN** a company has a backfilled `remote_regions` value and the facet
+  recompute runs
+- **THEN** the company's `remote_regions` column is unchanged, regardless of its
+  open jobs' derived `regions`
 
 ### Requirement: Company detail returns the company with its jobs
 
