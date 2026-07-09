@@ -7,15 +7,16 @@
 
 ## 2. Region mapping dictionary (`internal/remoteregion`)
 
-- [ ] 2.1 RED: write table-driven unit tests for `Map(raw string) []string`
+- [x] 2.1 RED: write table-driven unit tests for `Map(raw string) []string`
       covering clean labels (`Europe→[eu]`, `Worldwide→[global]`,
       `USA`/`North America→[north_america]`), composite (`Americas→{north_america,
       latam}`), timezone/narrow-geo best-effort (`Pacific Time Zone→[north_america]`,
       `CET…→[eu]`, `Western Asia→[mena]`), unrecognized→`[]`, dedup, and
       vocabulary-confinement (every output in `enrich.RegionValues`)
-- [ ] 2.2 GREEN: implement `remoteregion.Map` as a pure curated dictionary keyed on
+- [x] 2.2 GREEN: implement `remoteregion.Map` as a pure curated dictionary keyed on
       a normalized (lowercased/trimmed) label, splitting comma-separated composites
-- [ ] 2.3 REFACTOR + simplify; tests stay green
+- [x] 2.3 REFACTOR + simplify; tests stay green (reviewed: fixed TZ-span both-edge
+      logic, `pacific`→`pacific time`, gated boundary tz codes, dropped dead rules)
 
 ## 3. Persistence query (`SetCompanyRemoteRegions`)
 
