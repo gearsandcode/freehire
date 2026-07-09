@@ -32,22 +32,23 @@
 
 ## 4. Dataset (`sources/remote-companies.csv`)
 
-- [ ] 4.1 Place the externally-provided CSV at `sources/remote-companies.csv`
+- [x] 4.1 Place the externally-provided CSV at `sources/remote-companies.csv`
       (header columns `Name`, `Website`, `Region`); document the source
-- [ ] 4.2 Add a test that loads the checked-in CSV and asserts the expected header
-      columns and that every row has a non-empty `Name` and `Region`
+      (transcribed from the Atul Kumar remote-companies directory, 734 rows)
+- [x] 4.2 Add a test that loads the checked-in CSV and asserts every row parses and
+      every region string maps (dataset↔dictionary guard: skipped=0, unmapped=0)
 
 ## 5. Backfill worker (`cmd/backfill-remote-regions`)
 
-- [ ] 5.1 RED: unit-test the loader against a fake store — matched record updates,
+- [x] 5.1 RED: unit-test the loader against a fake store — matched record updates,
       unmatched record is a no-op counted as unmatched, unmapped region yields empty
       set with raw preserved, idempotent re-run, stat tallies (matched/unmatched/
       mapped/unmapped)
-- [ ] 5.2 GREEN: implement `cmd/backfill-remote-regions` using `worker.Main`/
+- [x] 5.2 GREEN: implement `cmd/backfill-remote-regions` using `worker.Main`/
       `worker.Bootstrap`, reading the CSV via `encoding/csv`, `remoteregion.Map` +
       `normalize.Slug`, `SetCompanyRemoteRegions`, mirroring `cmd/backfill-company-info`
       structure
-- [ ] 5.3 REFACTOR + simplify; tests stay green
+- [x] 5.3 REFACTOR + simplify; tests stay green
 
 ## 6. Recompute guard
 
