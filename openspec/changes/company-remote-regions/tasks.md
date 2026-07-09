@@ -68,10 +68,10 @@
 
 ## 8. Web filter UI
 
-- [ ] 8.1 Add a `remote_regions` facet to the companies filter (FilterModal): pills
+- [x] 8.1 Add a `remote_regions` facet to the companies filter (FilterModal): pills
       from the macro-region vocabulary, URL-synced param, counted toward the active
       filter total, mirroring the existing company `regions` facet
-- [ ] 8.2 Verify (svelte-check + visual/manual) the facet selects and filters the
+- [x] 8.2 Verify (svelte-check + visual/manual) the facet selects and filters the
       companies list
 
 ## 9. Finish
