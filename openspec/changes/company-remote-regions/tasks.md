@@ -76,7 +76,7 @@
 
 ## 9. Finish
 
-- [ ] 9.1 `go build ./... && go vet ./... && go test ./...` green; run the
+- [x] 9.1 `go build ./... && go vet ./... && go test ./...` green; run the
       backfill against a dev DB and confirm matched/unmatched counts are sane
-- [ ] 9.2 Update `CLAUDE.md`/`AGENT.md` layout + conventions for the new column,
+- [x] 9.2 Update `CLAUDE.md`/`AGENT.md` layout + conventions for the new column,
       package, dataset, and worker
