@@ -75,9 +75,9 @@ func TestMap(t *testing.T) {
 		{"UTC-10 to UTC+2", []string{"eu", "north_america"}},
 		{"UTC-8 to UTC+1", []string{"eu", "north_america"}},
 		{"UTC -3 to -5", []string{"latam", "north_america"}},
-		{"UTC+1 to UTC+2", []string{"eu"}},          // all-positive span stays in Europe
-		{"UTC+2 to UTC+9", []string{"apac", "eu"}},  // span reaching into Asia
-		{"Asia-Pacific", []string{"apac"}},          // "pacific" must not add north_america
+		{"UTC+1 to UTC+2", []string{"eu"}},         // all-positive span stays in Europe
+		{"UTC+2 to UTC+9", []string{"apac", "eu"}}, // span reaching into Asia
+		{"Asia-Pacific", []string{"apac"}},         // "pacific" must not add north_america
 		{"Pacific Time Zone (PT)", []string{"north_america"}},
 		{"PST Timezone", []string{"north_america"}},
 		{"Central Europe Time (CET) +/1h", []string{"eu"}},
