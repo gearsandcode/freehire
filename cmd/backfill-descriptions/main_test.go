@@ -17,16 +17,26 @@ type fakeStore struct {
 }
 
 func (f *fakeStore) ListJobsByIDAfter(_ context.Context, arg db.ListJobsByIDAfterParams) ([]db.Job, error) {
-	var page []db.Job
+	return f.page(arg.AfterID, arg.BatchSize, ""), nil
+}
+
+func (f *fakeStore) ListJobsBySourceAfter(_ context.Context, arg db.ListJobsBySourceAfterParams) ([]db.Job, error) {
+	return f.page(arg.AfterID, arg.BatchSize, arg.Source), nil
+}
+
+// page returns one keyset page after afterID, optionally filtered to a single source.
+func (f *fakeStore) page(afterID int64, batch int32, source string) []db.Job {
+	var out []db.Job
 	for _, j := range f.jobs {
-		if j.ID > arg.AfterID {
-			page = append(page, j)
-			if int32(len(page)) == arg.BatchSize {
-				break
-			}
+		if j.ID <= afterID || (source != "" && j.Source != source) {
+			continue
+		}
+		out = append(out, j)
+		if int32(len(out)) == batch {
+			break
 		}
 	}
-	return page, nil
+	return out
 }
 
 func (f *fakeStore) UpdateJobDescription(_ context.Context, arg db.UpdateJobDescriptionParams) (int64, error) {
@@ -47,7 +57,7 @@ func TestBackfillDecodesOnlyEncodedDescriptions(t *testing.T) {
 		{ID: 3, Source: "icims", Title: "C", Description: `%3Cp%3EHello%3C%2Fp%3E`},
 	}}
 
-	scanned, updated, err := backfillAll(context.Background(), store)
+	scanned, updated, err := backfillAll(context.Background(), store, "")
 	if err != nil {
 		t.Fatalf("backfillAll: %v", err)
 	}
@@ -87,5 +97,25 @@ func TestBackfillDecodesOnlyEncodedDescriptions(t *testing.T) {
 	}
 	if _, ok := got[3]; !ok {
 		t.Error("encoded job 3 (icims) must be updated")
+	}
+}
+
+// TestBackfillScopedToSource asserts a source-scoped run only touches that provider's encoded
+// rows — the fast path for a repair known to be one provider's.
+func TestBackfillScopedToSource(t *testing.T) {
+	store := &fakeStore{jobs: []db.Job{
+		{ID: 1, Source: "taleo", Title: "A", Description: `%3Cp%3Ehi%3C%2Fp%3E`},
+		{ID: 2, Source: "icims", Title: "B", Description: `%3Cp%3Ehi%3C%2Fp%3E`},
+	}}
+
+	scanned, updated, err := backfillAll(context.Background(), store, "taleo")
+	if err != nil {
+		t.Fatalf("backfillAll: %v", err)
+	}
+	if scanned != 1 || updated != 1 {
+		t.Fatalf("scanned=%d updated=%d, want 1/1 (only taleo scanned)", scanned, updated)
+	}
+	if len(store.updates) != 1 || store.updates[0].ID != 1 {
+		t.Fatalf("updates = %+v, want only taleo job 1", store.updates)
 	}
 }
