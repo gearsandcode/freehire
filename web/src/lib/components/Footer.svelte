@@ -20,6 +20,7 @@
       links: [
         { label: 'Trends', href: resolve('/trends') },
         { label: 'CLI', href: resolve('/cli') },
+        { label: 'ChatGPT', href: resolve('/chatgpt') },
         { label: 'API docs', href: resolve('/docs/api') },
       ],
     },
@@ -29,6 +30,7 @@
         { label: 'About', href: resolve('/about') },
         { label: 'For companies', href: resolve('/for-companies') },
         { label: 'Submit a job', href: resolve('/submit') },
+        { label: 'Privacy', href: resolve('/privacy') },
       ],
     },
   ];

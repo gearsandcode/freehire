@@ -18,6 +18,7 @@ export const STATIC_PATHS = [
   '/collections',
   '/for-companies',
   '/cli',
+  '/chatgpt',
   '/recruiters',
 ];
 
