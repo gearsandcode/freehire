@@ -2,6 +2,7 @@
   import { resolve } from '$app/paths';
   import CompanyLogo from './CompanyLogo.svelte';
   import { cardTags, formatSalary } from '$lib/enrichment';
+  import { metaDescription } from '$lib/seo';
   import type { Job } from '$lib/types';
   import { Badge } from '$lib/ui';
   import RealityBadge from './RealityBadge.svelte';
@@ -19,6 +20,11 @@
   const isViewed = $derived(dimViewed && hasViewed(job.public_slug));
 
   const tags = $derived(cardTags(job));
+  // A one-line blurb under the title so a card conveys what the job is without
+  // opening it. Prefer the clean model-written summary, but only tech jobs are
+  // enriched — fall back to a plain-text snippet of the raw (HTML) posting so
+  // non-tech jobs still show a description. metaDescription strips the tags.
+  const blurb = $derived(job.enrichment?.summary || metaDescription(job.description ?? '', 220));
   const salary = $derived(job.enrichment ? formatSalary(job.enrichment) : null);
   const skills = $derived(job.enrichment?.skills ?? []);
   // How recently it was posted is a key signal, so it leads the header.
@@ -53,6 +59,10 @@
   </div>
 
   <h3 class="mt-2 line-clamp-2 text-lg font-semibold tracking-tight">{job.title}</h3>
+
+  {#if blurb}
+    <p class="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{blurb}</p>
+  {/if}
 
   <div class="mt-3 flex items-end justify-between gap-3">
     <div class="flex min-w-0 flex-wrap items-center gap-1.5">

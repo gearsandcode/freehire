@@ -109,7 +109,7 @@
             href={resolve('/companies/[slug]', { slug: company.slug })}
             class="flex items-start gap-2.5 rounded-lg border border-border px-4 py-3 transition-colors hover:bg-accent"
           >
-            <CompanyLogo name={company.name} size="size-16" />
+            <CompanyLogo name={company.name} size="size-8" />
             <div class="flex min-w-0 flex-1 flex-col gap-1">
               <div class="flex items-center justify-between gap-2">
                 <span class="truncate font-medium">{company.name}</span>
