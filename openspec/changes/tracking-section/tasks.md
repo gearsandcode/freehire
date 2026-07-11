@@ -18,4 +18,4 @@
 ## 4. Docs + verification
 
 - [x] 4.1 Update the api-docs endpoint list (`web/scripts/gen-api-docs.mjs` data) for `/me/tracking*` (+ note `/me/jobs` alias) and the new `/me/tracking/analyses`.
-- [ ] 4.2 Verify: `go build/vet/test ./...` (+ integration) green; web `svelte-check`, `vitest`, lint clean on changed files; visual-check the Tracking tabs + AI-fit list.
+- [x] 4.2 Verify: `go build/vet/test ./...` (+ integration) green; web `svelte-check`, `vitest`, lint clean on changed files; visual-check the Tracking tabs + AI-fit list.
