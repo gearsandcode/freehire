@@ -47,11 +47,12 @@ func (n *Notifier) Send(ctx context.Context, _ string, dest string, d notify.Dig
 // string, and the saved search name are HTML-escaped (they are user/source data);
 // the freehire URL is our own and safe.
 //
-// The body is capped to Telegram's telegramMaxLen: job cards are added until the
+// The body is capped to Telegram's telegramMaxLen: job lines are added until the
 // next one (plus the largest possible "+ N more" tail) would overflow, then the
-// tail absorbs the remainder. Without the cap a digest of many jobs exceeds the
-// limit, Telegram rejects the send deterministically, every retry re-fails, and
-// the whole batch is dead-lettered — silently dropping the user's notifications.
+// tail absorbs the remainder. Without the cap a digest of many long-title jobs
+// exceeds the limit, Telegram rejects the send deterministically, every retry
+// re-fails, and the whole batch is dead-lettered — silently dropping the user's
+// notifications.
 func (n *Notifier) render(d notify.Digest) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "🔔 <b>%d</b> new job%s for %q\n\n", d.Total, plural(d.Total), html.EscapeString(d.SavedSearchName))
@@ -62,35 +63,34 @@ func (n *Notifier) render(d notify.Digest) string {
 	used := utf16Len(b.String())
 	shown := 0
 	for _, j := range d.Jobs {
-		card := n.jobCard(j)
-		cardLen := utf16Len(card)
-		if used+cardLen+tailReserve > telegramMaxLen {
+		line := n.jobLine(j)
+		lineLen := utf16Len(line)
+		if used+lineLen+tailReserve > telegramMaxLen {
 			break
 		}
-		b.WriteString(card)
-		used += cardLen
+		b.WriteString(line)
+		used += lineLen
 		shown++
 	}
 	if more := d.Total - shown; more > 0 {
 		b.WriteString(moreLine(more))
 	}
-	return strings.TrimRight(b.String(), "\n")
+	return b.String()
 }
 
-// jobCard renders one digest job as a multi-line card: a title, an optional
-// company line, an optional salary line, and an Apply link to the freehire job
-// page. Title, company, and salary are HTML-escaped; cards are separated by a
-// trailing blank line.
-func (n *Notifier) jobCard(j notify.DigestJob) string {
+// jobLine renders one digest job on a single line: a bullet linking to the
+// freehire job page, an optional " — Company" suffix, and an optional " · salary"
+// suffix. Title, company, and salary are HTML-escaped.
+func (n *Notifier) jobLine(j notify.DigestJob) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "💼 <b>%s</b>\n", html.EscapeString(j.Title))
+	fmt.Fprintf(&b, "• <a href=%q>%s</a>", n.applyURL(j), html.EscapeString(j.Title))
 	if j.Company != "" {
-		fmt.Fprintf(&b, "🏛️ at %s\n", html.EscapeString(j.Company))
+		fmt.Fprintf(&b, " — %s", html.EscapeString(j.Company))
 	}
 	if s := formatSalary(j.SalaryMin, j.SalaryMax, j.SalaryCurrency, j.SalaryPeriod); s != "" {
-		fmt.Fprintf(&b, "💰 %s\n", html.EscapeString(s))
+		fmt.Fprintf(&b, " · %s", html.EscapeString(s))
 	}
-	fmt.Fprintf(&b, "✅ <a href=%q>Apply →</a>\n\n", n.applyURL(j))
+	b.WriteByte('\n')
 	return b.String()
 }
 

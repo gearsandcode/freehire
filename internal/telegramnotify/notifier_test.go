@@ -33,25 +33,17 @@ func TestNotifier_Render(t *testing.T) {
 	if !strings.Contains(got, "Go &amp; &lt;remote&gt;") {
 		t.Errorf("saved-search name not HTML-escaped: %q", got)
 	}
-	// Card: escaped bold title, "at Company" line, salary line, and an Apply link
-	// to the freehire job page (trailing slash trimmed) tagged with the telegram UTM.
-	for _, want := range []string{
-		"💼 <b>Go Dev &lt;x&gt;</b>",
-		"🏛️ at Acme",
-		"💰 $130K—$170K / year",
-		`✅ <a href="https://freehire.dev/jobs/go-dev-acme?utm_source=telegram-bot">Apply →</a>`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("card missing %q in: %q", want, got)
-		}
+	// Line: a bullet whose escaped title links to the freehire job page (trailing
+	// slash trimmed) tagged with the telegram UTM, then " — Company · salary".
+	if want := `• <a href="https://freehire.dev/jobs/go-dev-acme?utm_source=telegram-bot">Go Dev &lt;x&gt;</a> — Acme · $130K—$170K / year`; !strings.Contains(got, want) {
+		t.Errorf("line missing %q in: %q", want, got)
 	}
-	// A job with no company/salary omits those lines but still renders title + Apply.
-	if !strings.Contains(got, "💼 <b>Rustacean</b>") ||
-		!strings.Contains(got, `href="https://freehire.dev/jobs/rustacean-foo?utm_source=telegram-bot"`) {
-		t.Errorf("company/salary-less card wrong: %q", got)
+	// A job with no company/salary omits those suffixes but still renders the link.
+	if want := `• <a href="https://freehire.dev/jobs/rustacean-foo?utm_source=telegram-bot">Rustacean</a>` + "\n"; !strings.Contains(got, want) {
+		t.Errorf("company/salary-less line wrong: %q", got)
 	}
-	if strings.Contains(got, "🏛️ at \n") || strings.Count(got, "💰") != 1 {
-		t.Errorf("empty company/salary lines should be omitted: %q", got)
+	if strings.Contains(got, " — ·") || strings.Count(got, "·") != 1 {
+		t.Errorf("empty company/salary suffixes should be omitted: %q", got)
 	}
 	// Total 3 but only 2 listed → "+ 1 more".
 	if !strings.Contains(got, "+ 1 more") {
@@ -111,7 +103,7 @@ func TestNotifier_RenderCapsAtTelegramLimit(t *testing.T) {
 	if n16 := len(utf16.Encode([]rune(got))); n16 > 4096 {
 		t.Errorf("rendered %d UTF-16 units, want <= 4096 (Telegram sendMessage limit)", n16)
 	}
-	shown := strings.Count(got, "💼 ")
+	shown := strings.Count(got, "• ")
 	if shown == 0 || shown >= total {
 		t.Errorf("shown = %d, want some-but-not-all of %d jobs listed", shown, total)
 	}
