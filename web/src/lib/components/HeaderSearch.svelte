@@ -124,7 +124,7 @@
     if (!q) return;
     reset();
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- query string appended to a resolved path
-    void goto(`${resolve('/jobs')}?q=${encodeURIComponent(q)}`);
+    void goto(`${resolve('/')}?q=${encodeURIComponent(q)}`);
   }
 
   function onKeydown(e: KeyboardEvent) {

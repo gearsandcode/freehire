@@ -1,13 +1,10 @@
-import { serverApi } from '$lib/server/api';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-const LIMIT = 20;
-
-// Server-render the first page of search results for the current URL filters, so
-// the job rows are in the initial HTML. The URL query already carries the search
-// params (q, facets, sort) in the shape the search API reads; `searchJobs` adds
-// pagination. Filters/sort/"load more" then run client-side over the same client.
-export const load: PageServerLoad = async ({ url, fetch }) => {
-  const initial = await serverApi(fetch).searchJobs(url.searchParams, LIMIT, 0);
-  return { initial };
+// The job feed moved to the homepage. `/jobs` is a permanent (301) redirect that
+// carries the query string through verbatim, so every saved filter/share link
+// (e.g. /jobs?q=go&remote=true) lands on the same filtered feed at `/`. Child
+// routes (/jobs/[slug], /jobs/swipe) have their own loads and are unaffected.
+export const load: PageServerLoad = ({ url }) => {
+  redirect(301, `/${url.search}`);
 };

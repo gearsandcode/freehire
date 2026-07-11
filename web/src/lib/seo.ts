@@ -149,7 +149,8 @@ export function organizationJsonLd(company: Company, origin: string): Record<str
 }
 
 /** schema.org WebSite for the homepage. The SearchAction advertises the job
- *  search so engines can offer a sitelinks search box straight into /jobs?q=. */
+ *  search so engines can offer a sitelinks search box straight into the feed
+ *  (the homepage) at /?q=. */
 export function websiteJsonLd(origin: string): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
@@ -161,7 +162,7 @@ export function websiteJsonLd(origin: string): Record<string, unknown> {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: `${origin}/jobs?q={search_term_string}`,
+        urlTemplate: `${origin}/?q={search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },

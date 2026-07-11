@@ -442,7 +442,7 @@ export const FILTER_COLLECTIONS: FilterCollection[] = [
 
 // toQuery expands a filter collection's params into a URL query string, repeating a
 // key once per value for list params (OR semantics). It is the single source for
-// both a card's link (`/jobs?<query>`) and its open-job count request, so the two
+// both the feed filter URL (`/?<query>`) and its open-job count request, so the two
 // can never disagree.
 export function toQuery(params: Record<string, string | string[]>): string {
   const q = new URLSearchParams();

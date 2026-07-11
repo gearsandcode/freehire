@@ -182,7 +182,7 @@
   // reflects what the swipe session ended on.
   function close() {
     const qs = deckParams().toString();
-    goto(resolve('/jobs') + (qs ? `?${qs}` : ''));
+    goto(resolve('/') + (qs ? `?${qs}` : ''));
   }
 
   // --- Pointer drag on the active card (touch + mouse) ---------------------

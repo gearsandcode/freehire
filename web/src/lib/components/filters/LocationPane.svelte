@@ -176,9 +176,14 @@
   </div>
 {/if}
 
-{#each visibleRegions as { region, countryCodes, nameMatch } (region)}
+{#each visibleRegions as { region, countryCodes, nameMatch }, i (region)}
   {@const isOpen = expandedRegions.has(region) || !!q}
-  <div class="border-t border-border first:border-t-0">
+  <!-- Separate consecutive regions with a top border, but not the first one:
+       `first:` (`:first-child`) can't be used here — the region rows aren't the
+       first child of the pane (search input, chips and the region pills precede
+       them), so it never matched and its top border doubled up with the pills'
+       border-b. Gate on the loop index instead. -->
+  <div class={i > 0 ? 'border-t border-border' : ''}>
     <button
       type="button"
       class="flex w-full items-center gap-2 py-3"

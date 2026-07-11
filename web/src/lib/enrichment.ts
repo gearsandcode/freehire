@@ -60,10 +60,10 @@ function label(map: Record<string, string>, value: string): string {
   return map[value] ?? humanize(value);
 }
 
-/** The /jobs URL that filters by a single facet value. Param names match the
- *  search API (see facets.ts / filters.ts). */
+/** The job-feed URL that filters by a single facet value. The feed lives at the
+ *  homepage (`/`); param names match the search API (see facets.ts / filters.ts). */
 export function filterHref(param: string, value: string): string {
-  return `/jobs?${param}=${encodeURIComponent(value)}`;
+  return `/?${param}=${encodeURIComponent(value)}`;
 }
 
 /** Group thousands with thin spaces, matching the salary line in the design. */

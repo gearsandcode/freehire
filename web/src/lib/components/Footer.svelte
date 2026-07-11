@@ -9,7 +9,7 @@
     {
       title: 'Product',
       links: [
-        { label: 'Jobs', href: resolve('/jobs') },
+        { label: 'Jobs', href: resolve('/') },
         { label: 'Companies', href: resolve('/companies') },
         { label: 'Collections', href: resolve('/collections') },
         { label: 'Recruiters', href: resolve('/recruiters') },
@@ -26,6 +26,7 @@
     {
       title: 'Company',
       links: [
+        { label: 'About', href: resolve('/about') },
         { label: 'For companies', href: resolve('/for-companies') },
         { label: 'Submit a job', href: resolve('/submit') },
       ],

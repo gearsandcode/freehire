@@ -13,7 +13,7 @@ export const SITEMAP_CHUNK = 50000;
 /** The site's static, always-present pages (relative paths). */
 export const STATIC_PATHS = [
   '/',
-  '/jobs',
+  '/about',
   '/companies',
   '/collections',
   '/for-companies',

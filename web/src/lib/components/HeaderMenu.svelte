@@ -47,22 +47,23 @@
   // Static nav (always shown) and the signed-in account items (shown only when
   // authenticated). Moderation is gated on the moderator role at render time.
   const navLinks = [
-    { href: '/jobs', label: 'Jobs' },
+    // No "Jobs" entry: the homepage IS the job feed, reached via the logo.
     { href: '/companies', label: 'Companies' },
     { href: '/collections', label: 'Collections' },
     { href: '/analytics', label: 'Analytics' },
     { href: '/trends', label: 'Trends' },
-    { href: '/cli', label: 'CLI' },
     { href: '/recruiters', label: 'For recruiters' },
     { href: '/for-companies', label: 'For companies' },
   ] as const;
 
+  // Personal account items — what the signed-in user owns/reads. "Submit a job"
+  // is a create action, so it's rendered separately (below), split off from the
+  // "My submissions" reading item it used to sit next to.
   const accountLinks = [
     { href: '/my/jobs', label: 'My jobs' },
     { href: '/my/recommendations', label: 'Recommendations' },
     { href: '/my/searches', label: 'Saved searches & alerts' },
     { href: '/my/api-keys', label: 'API keys' },
-    { href: '/submit', label: 'Submit a job' },
     { href: '/my/submissions', label: 'My submissions' },
   ] as const;
 
@@ -208,6 +209,9 @@
 
       <!-- Middle: scrollable, sectioned links. -->
       <div class="max-sm:flex-1 max-sm:overflow-y-auto max-sm:px-2 max-sm:pb-3">
+        <!-- Signed-in first: the identity row and the user's own Account items sit
+             above the general site nav, so a returning user reaches their stuff
+             (My jobs, saved searches, submissions) without scrolling past the nav. -->
         {#if isAuthenticated()}
           <!-- Identity row: avatar + email, a single link to the profile. -->
           <a
@@ -221,25 +225,21 @@
             <span class="truncate">{email}</span>
           </a>
           <div class="my-1 hidden h-px bg-border sm:block"></div>
-        {/if}
 
-        <!-- Nav -->
-        <p class={sectionLabel}>Navigate</p>
-        {#each navLinks as link (link.href)}
-          <a href={resolve(link.href)} role="menuitem" onclick={() => (open = false)} class={linkClass(link.href)}>
-            {link.label}
-          </a>
-        {/each}
-
-        <!-- Account -->
-        {#if isAuthenticated()}
-          <div class="my-1 hidden h-px bg-border sm:block"></div>
           <p class={sectionLabel}>Account</p>
           {#each accountLinks as link (link.href)}
             <a href={resolve(link.href)} role="menuitem" onclick={() => (open = false)} class={linkClass(link.href)}>
               {link.label}
             </a>
           {/each}
+
+          <!-- Create/action items, split off from the account reading items above
+               by an always-visible divider (so "Submit a job" no longer reads as a
+               sibling of "My submissions"). -->
+          <div class="my-1 h-px bg-border"></div>
+          <a href={resolve('/submit')} role="menuitem" onclick={() => (open = false)} class={linkClass('/submit')}>
+            Submit a job
+          </a>
           {#if isModerator}
             <a
               href={resolve('/moderation')}
@@ -250,7 +250,22 @@
               Moderation
             </a>
           {/if}
+          <div class="my-1 hidden h-px bg-border sm:block"></div>
         {/if}
+
+        <!-- Nav -->
+        <p class={sectionLabel}>Navigate</p>
+        {#each navLinks as link (link.href)}
+          <a href={resolve(link.href)} role="menuitem" onclick={() => (open = false)} class={linkClass(link.href)}>
+            {link.label}
+          </a>
+        {/each}
+
+        <!-- About sits at the very bottom of the link list, just before the
+             Sign in / Log out action (the marketing landing lives at /about). -->
+        <a href={resolve('/about')} role="menuitem" onclick={() => (open = false)} class={linkClass('/about')}>
+          About
+        </a>
 
         <!-- Desktop-only: auth inline at the end of the dropdown (theme lives on
              the bar). -->

@@ -15,13 +15,14 @@
   // action all live in HeaderMenu.
   //
   // The middle slot is one text field that adapts to context: on the list pages
-  // (/jobs, /companies, and a company's own /companies/:slug jobs list) it IS that
-  // page's filter (HeaderListSearch drives the list, so there's no duplicate box);
-  // everywhere else it's the global launcher with the instant dropdown
-  // (HeaderSearch). A company detail page is a jobs list scoped to that company, so
-  // the header search filters its postings — hence 'company' shares the jobs proxy.
+  // (the homepage feed `/`, /companies, and a company's own /companies/:slug jobs
+  // list) it IS that page's filter (HeaderListSearch drives the list, so there's no
+  // duplicate box); everywhere else it's the global launcher with the instant
+  // dropdown (HeaderSearch). A company detail page is a jobs list scoped to that
+  // company, so the header search filters its postings — hence 'company' shares the
+  // jobs proxy.
   const listKind = $derived(
-    page.url.pathname === '/jobs'
+    page.url.pathname === '/'
       ? 'jobs'
       : page.url.pathname === '/companies'
         ? 'companies'
@@ -91,7 +92,7 @@
     </a>
 
     <nav class="hidden shrink-0 items-center gap-1 sm:flex">
-      <a href={resolve('/jobs')} class={navLinkClass('/jobs')}>Jobs</a>
+      <!-- No "Jobs" link: the logo already leads to the homepage feed. -->
       <a href={resolve('/companies')} class={navLinkClass('/companies')}>Companies</a>
     </nav>
 

@@ -149,7 +149,7 @@
   function gapHref(skill: string): string {
     const params = filters ? filtersToParams(filters.applied) : new URLSearchParams();
     params.append('skills', skill);
-    return `/jobs?${params}`;
+    return `/?${params}`;
   }
 
   async function remove() {

@@ -138,7 +138,7 @@
         </p>
 
         <div class="reveal mt-9 flex flex-wrap items-center gap-3" style="--d:240ms">
-          <Button href={resolve('/jobs')} variant="primary" size="lg">Browse jobs</Button>
+          <Button href={resolve('/')} variant="primary" size="lg">Browse jobs</Button>
           <Button href={GITHUB} target="_blank" rel="noopener noreferrer" variant="outline" size="lg">
             View on GitHub ↗
           </Button>
@@ -356,7 +356,7 @@
         and the openings come to you.
       </p>
       <div class="mt-8 flex flex-wrap gap-3">
-        <Button href={resolve('/jobs')} variant="primary" size="lg">Find &amp; save a filter</Button>
+        <Button href={resolve('/')} variant="primary" size="lg">Find &amp; save a filter</Button>
         <Button href={resolve('/my/searches')} variant="ghost" size="lg">Saved searches &amp; alerts</Button>
       </div>
     </div>

@@ -1,17 +1,14 @@
 import { serverApi } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
-// Live catalogue scale for the landing stats strip. Both totals are a one-row
-// list read (limit=1) — we only want `meta.total`, not the page. `allSettled`
-// keeps the marketing homepage rendering even if the API hiccups: a failed leg
-// yields `null`, and HomeView falls back to a static "+" figure.
-export const load: PageServerLoad = async ({ fetch }) => {
-  const api = serverApi(fetch);
-  const [jobs, companies] = await Promise.allSettled([api.listJobs(1, 0), api.listCompanies('', 1, 0)]);
-  return {
-    stats: {
-      jobs: jobs.status === 'fulfilled' ? jobs.value.total ?? null : null,
-      companies: companies.status === 'fulfilled' ? companies.value.total ?? null : null,
-    },
-  };
+const LIMIT = 20;
+
+// The homepage IS the job feed. Server-render the first page of search results
+// for the current URL filters, so the job rows are in the initial HTML. The URL
+// query already carries the search params (q, facets, sort) in the shape the
+// search API reads; `searchJobs` adds pagination. Filters/sort/"load more" then
+// run client-side over the same client.
+export const load: PageServerLoad = async ({ url, fetch }) => {
+  const initial = await serverApi(fetch).searchJobs(url.searchParams, LIMIT, 0);
+  return { initial };
 };

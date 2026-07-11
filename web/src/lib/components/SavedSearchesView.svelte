@@ -243,7 +243,7 @@
                 </span>
               </div>
               <div class="flex shrink-0 flex-wrap items-center justify-end gap-1">
-                <Button variant="ghost" size="sm" href={`/jobs?${s.query}`}>Open</Button>
+                <Button variant="ghost" size="sm" href={`/?${s.query}`}>Open</Button>
                 <Button variant="ghost" size="sm" onclick={() => rename(s)}>Rename</Button>
                 {#if s.public_slug}
                   <Button
