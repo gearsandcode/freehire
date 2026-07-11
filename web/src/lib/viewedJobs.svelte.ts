@@ -1,6 +1,6 @@
 // Tracks which jobs the signed-in user has already viewed, so the browse list
 // and search results can dim already-seen cards. The set of viewed public_slugs
-// is read once from GET /api/v1/me/jobs/viewed (the browse view triggers the
+// is read once from GET /api/v1/me/tracking/viewed (the browse view triggers the
 // load); recording a view on a job detail page marks its slug locally too, so a
 // card dims on back-navigation without waiting for a reload.
 //

@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-  <title>My jobs — freehire</title>
+  <title>Tracking — freehire</title>
 </svelte:head>
 
 <JobBoard />

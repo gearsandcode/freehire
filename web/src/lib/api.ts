@@ -36,6 +36,8 @@ import type {
   ATSResponse,
   JobMatch,
   JobFitResponse,
+  JobFitQuota,
+  MyAnalysisItem,
   ResumeProfile,
   ActivityGranularity,
   ActivityPoint,
@@ -214,7 +216,7 @@ export function createApi(
     const params = new URLSearchParams(facets);
     params.set('limit', String(limit));
     params.set('offset', '0');
-    return toSlice(await request<Page<Job>>(`/api/v1/me/jobs/swipe?${params}`), 0);
+    return toSlice(await request<Page<Job>>(`/api/v1/me/tracking/swipe?${params}`), 0);
   }
 
   /** Personalized job recommendations for the signed-in user: open jobs ranked by
@@ -420,7 +422,7 @@ export function createApi(
     offset: number,
   ): Promise<Slice<MyJob> & { counts: MyJobCounts }> {
     const res = await request<{ data: MyJob[]; meta: ListMeta & { counts: MyJobCounts } }>(
-      `/api/v1/me/jobs${query(limit, offset)}&filter=${filter}`,
+      `/api/v1/me/tracking${query(limit, offset)}&filter=${filter}`,
     );
     return { ...toSlice(res, offset), counts: res.meta.counts };
   }
@@ -428,14 +430,23 @@ export function createApi(
   /** The current user's application-pipeline snapshot: per-bucket application
    *  counts aggregated server-side, for the Pipeline tab's Sankey and rate cards. */
   async function getMyPipeline(): Promise<PipelineStats> {
-    return requestData<PipelineStats>('/api/v1/me/jobs/pipeline');
+    return requestData<PipelineStats>('/api/v1/me/tracking/pipeline');
+  }
+
+  /** The jobs the current user has run the AI fit analysis on (newest first), plus their
+   *  monthly quota — powers the Tracking → AI fit tab. Never triggers the LLM. */
+  async function myAnalyses(): Promise<{ items: MyAnalysisItem[]; quota: JobFitQuota }> {
+    const res = await request<{ data: MyAnalysisItem[]; meta: { quota: JobFitQuota } }>(
+      '/api/v1/me/tracking/analyses',
+    );
+    return { items: res.data, quota: res.meta.quota };
   }
 
   /** The public slugs of every job the current user has interacted with. The
    *  browse UI cross-references this set to dim already-viewed cards without
    *  authenticating the public job list. */
   async function listViewedSlugs(): Promise<string[]> {
-    return requestData<string[]>('/api/v1/me/jobs/viewed');
+    return requestData<string[]>('/api/v1/me/tracking/viewed');
   }
 
   // --- API keys -------------------------------------------------------------
@@ -708,6 +719,7 @@ export function createApi(
     trackJob,
     listMyJobs,
     getMyPipeline,
+    myAnalyses,
     listViewedSlugs,
     listApiKeys,
     createApiKey,

@@ -266,7 +266,7 @@
         <code class="font-mono text-foreground">note</code> any job from a script or an agent.
       </p>
       <div class="mt-8 flex flex-wrap gap-3">
-        <Button href={resolve('/my/jobs')} variant="primary" size="lg">Open My jobs</Button>
+        <Button href={resolve('/my/tracking')} variant="primary" size="lg">Open Tracking</Button>
         <Button href={resolve('/cli')} variant="ghost" size="lg">Track from the CLI</Button>
       </div>
     </div>

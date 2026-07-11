@@ -133,7 +133,7 @@ freehire search <span class="text-foreground">"golang"</span> --remote --region 
     </div>
     <p class="mt-8 max-w-2xl text-sm leading-relaxed text-muted-foreground">
       Everything you save, apply to and stage shows up on your
-      <a href={resolve('/my/jobs')} class="font-medium text-foreground underline-offset-4 hover:underline">My jobs</a>
+      <a href={resolve('/my/tracking')} class="font-medium text-foreground underline-offset-4 hover:underline">Tracking</a>
       board.
       <code class="font-mono text-foreground">stage</code> takes a controlled value:
       <span class="font-mono text-foreground"

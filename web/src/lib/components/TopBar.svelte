@@ -48,7 +48,7 @@
 
   // Surface auth prompts carried in the URL on the client, then clean it.
   // ?auth_error: a failed OAuth callback. ?auth=required: a guarded page (e.g.
-  // /my/jobs, /jobs/swipe) bounced a signed-out visitor here to sign in. Runs in
+  // /my/tracking, /jobs/swipe) bounced a signed-out visitor here to sign in. Runs in
   // afterNavigate — not onMount — because this header lives in the persistent root
   // layout: a guard that redirects here via client-side navigation never remounts
   // it, so onMount would fire only on a cold load and miss the in-app bounce.

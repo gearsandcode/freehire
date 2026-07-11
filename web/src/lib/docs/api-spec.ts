@@ -472,7 +472,7 @@ ${BASE_URL}/auth/oauth/google/start`,
       },
       {
         method: 'GET',
-        path: '/me/jobs',
+        path: '/me/tracking',
         auth: 'cookie-or-key',
         summary: 'Your tracked jobs joined with the job data.',
         description:
@@ -484,7 +484,7 @@ ${BASE_URL}/auth/oauth/google/start`,
           { name: 'limit', type: 'integer', description: 'Page size, 1–100.', example: '20' },
           { name: 'offset', type: 'integer', description: 'Rows to skip.', example: '0' },
         ],
-        curl: `curl "${BASE_URL}/me/jobs?filter=applied" -H "Authorization: Bearer $FREEHIRE_API_KEY"`,
+        curl: `curl "${BASE_URL}/me/tracking?filter=applied" -H "Authorization: Bearer $FREEHIRE_API_KEY"`,
         responseExample: `{
   "data": [
     {
@@ -506,11 +506,37 @@ ${BASE_URL}/auth/oauth/google/start`,
       },
       {
         method: 'GET',
-        path: '/me/jobs/viewed',
+        path: '/me/tracking/viewed',
         auth: 'cookie-or-key',
         summary: 'Slugs of jobs you have viewed.',
-        curl: `curl "${BASE_URL}/me/jobs/viewed" -H "Authorization: Bearer $FREEHIRE_API_KEY"`,
+        curl: `curl "${BASE_URL}/me/tracking/viewed" -H "Authorization: Bearer $FREEHIRE_API_KEY"`,
         responseExample: `{ "data": ["senior-go-engineer-acme-1a2b", "..."] }`,
+      },
+      {
+        method: 'GET',
+        path: '/me/tracking/analyses',
+        auth: 'cookie-or-key',
+        summary: 'Jobs you have run the AI fit analysis on.',
+        description:
+          'Newest first, closed jobs included (with `closed: true`). Each item carries the ' +
+          'overall score and verdict; `stale` marks an analysis whose CV, job, or model has ' +
+          'changed since. `meta.quota` reports your monthly fit-analysis usage. Never runs the LLM.',
+        curl: `curl "${BASE_URL}/me/tracking/analyses" -H "Authorization: Bearer $FREEHIRE_API_KEY"`,
+        responseExample: `{
+  "data": [
+    {
+      "slug": "senior-go-engineer-acme-1a2b",
+      "title": "Senior Go Engineer",
+      "company": "Acme",
+      "closed": false,
+      "overall_score": 82,
+      "verdict": "Strong Fit",
+      "analysed_at": "2026-07-11T10:00:00Z",
+      "stale": false
+    }
+  ],
+  "meta": { "quota": { "used": 3, "limit": 10, "remaining": 7 } }
+}`,
       },
     ],
   },

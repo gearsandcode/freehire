@@ -53,6 +53,20 @@ export interface JobFitResponse {
   quota?: JobFitQuota;
 }
 
+/** One row of the Tracking → AI fit tab: a compact projection of a cached fit analysis
+ *  (not the full analysis). `closed` marks a job that has since closed; `stale` marks an
+ *  analysis whose CV/job/model changed since it ran. `analysed_at` is an ISO timestamp. */
+export interface MyAnalysisItem {
+  slug: string;
+  title: string;
+  company: string;
+  closed: boolean;
+  overall_score: number;
+  verdict: string;
+  analysed_at: string;
+  stale: boolean;
+}
+
 /** The lower-coverage extras stored in the company's `company_info` JSONB. Every
  *  field is optional — the loader omits what the source doesn't provide. */
 export interface CompanyInfo {

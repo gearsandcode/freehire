@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-  <title>Pipeline — My jobs — freehire</title>
+  <title>Pipeline — Tracking — freehire</title>
 </svelte:head>
 
 <PipelineView />

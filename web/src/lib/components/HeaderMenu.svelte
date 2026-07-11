@@ -60,7 +60,7 @@
   // is a create action, so it's rendered separately (below), split off from the
   // "My submissions" reading item it used to sit next to.
   const accountLinks = [
-    { href: '/my/jobs', label: 'My jobs' },
+    { href: '/my/tracking', label: 'Tracking' },
     { href: '/my/recommendations', label: 'Recommendations' },
     { href: '/my/searches', label: 'Saved searches & alerts' },
     { href: '/my/api-keys', label: 'API keys' },

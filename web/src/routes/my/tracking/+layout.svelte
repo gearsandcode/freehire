@@ -8,12 +8,13 @@
   let { children }: { children: Snippet } = $props();
 
   // Each view is its own URL so it is linkable, bookmarkable, and survives a
-  // reload. Board is the index route; Pipeline/History get their own paths.
+  // reload. Board is the index route; Pipeline/History/AI fit get their own paths.
   const path = $derived(page.url.pathname);
   // Board (index) matches exactly so it is not also active on the child routes.
-  const boardActive = $derived(path === '/my/jobs');
-  const pipelineActive = $derived(path.startsWith('/my/jobs/pipeline'));
-  const historyActive = $derived(path.startsWith('/my/jobs/history'));
+  const boardActive = $derived(path === '/my/tracking');
+  const pipelineActive = $derived(path.startsWith('/my/tracking/pipeline'));
+  const historyActive = $derived(path.startsWith('/my/tracking/history'));
+  const analysesActive = $derived(path.startsWith('/my/tracking/analyses'));
 
   const tabClass = (active: boolean) =>
     cn(
@@ -27,7 +28,7 @@
 <svelte:head>
   <!-- Base title (the child pages override it with their view name); set here so
        it is present even in the signed-out state, where children do not render. -->
-  <title>My jobs — freehire</title>
+  <title>Tracking — freehire</title>
   <!-- Personal pages: keep them out of search results. -->
   <meta name="robots" content="noindex" />
 </svelte:head>
@@ -39,16 +40,16 @@
     </p>
   {:else}
     <div class="flex flex-col gap-4">
-      <h1 class="text-2xl font-semibold tracking-tight">My jobs</h1>
+      <h1 class="text-2xl font-semibold tracking-tight">Tracking</h1>
 
-      <div role="tablist" aria-label="My jobs view" class="flex items-center gap-1">
-        <a role="tab" aria-selected={boardActive} href={resolve('/my/jobs')} class={tabClass(boardActive)}>
+      <div role="tablist" aria-label="Tracking view" class="flex items-center gap-1">
+        <a role="tab" aria-selected={boardActive} href={resolve('/my/tracking')} class={tabClass(boardActive)}>
           Board
         </a>
         <a
           role="tab"
           aria-selected={pipelineActive}
-          href={resolve('/my/jobs/pipeline')}
+          href={resolve('/my/tracking/pipeline')}
           class={tabClass(pipelineActive)}
         >
           Pipeline
@@ -56,10 +57,18 @@
         <a
           role="tab"
           aria-selected={historyActive}
-          href={resolve('/my/jobs/history')}
+          href={resolve('/my/tracking/history')}
           class={tabClass(historyActive)}
         >
           History
+        </a>
+        <a
+          role="tab"
+          aria-selected={analysesActive}
+          href={resolve('/my/tracking/analyses')}
+          class={tabClass(analysesActive)}
+        >
+          AI fit
         </a>
       </div>
 
