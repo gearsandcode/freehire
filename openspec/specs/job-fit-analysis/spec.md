@@ -268,7 +268,6 @@ the analysis inline. When no analysis is cached it MUST show an action that navi
 - **WHEN** no analysis is cached
 - **THEN** the sidebar shows an action that navigates to `/jobs/[slug]/fit` instead of computing inline
 
-
 ### Requirement: Per-user monthly fit-analysis quota
 
 The system SHALL limit each user to at most **10 AI fit analyses per rolling 30-day window**, enforced BEFORE the LLM prompt-chain runs on both the synchronous `POST /api/v1/jobs/:slug/fit` endpoint and the streaming `GET /api/v1/jobs/:slug/fit/stream` endpoint. Only the FIRST analysis of a distinct `(user, job)` pair consumes quota: a recompute of a pair the user has already analysed, and re-running the same job, MUST be allowed regardless of the count. Consumption is counted from the persisted `user_job_analysis` rows whose first-analysis timestamp falls within the last 30 days, so an analysis that fails or is never persisted MUST NOT consume quota. The limit applies to every role — there is no staff exemption.
@@ -311,3 +310,18 @@ The read endpoint `GET /api/v1/jobs/:slug/fit` SHALL return a `quota` object car
 
 - **WHEN** a caller has analysed 10 or more distinct jobs in the window
 - **THEN** `remaining` is reported as `0`, not a negative number
+
+### Requirement: Structured résumé augments the fit input
+
+The fit prompt-chain SHALL additionally consume the caller's current structured résumé, when present, as pre-normalized candidate context supplied beside the existing CV text — never replacing it. The raw CV text remains the ground truth for requirement matching; the structured résumé is additive signal. When the caller has no current structured résumé (unconfigured LLM, not yet extracted, or stale), the chain MUST run exactly as it does today on the CV text alone, with no error.
+
+#### Scenario: Structured résumé is provided to the chain when present
+
+- **WHEN** the caller has a current structured résumé and requests a fit analysis
+- **THEN** the fit input includes the structured résumé as pre-normalized context in addition to the CV text
+
+#### Scenario: Analysis degrades to text-only when the structure is absent
+
+- **WHEN** the caller has a CV but no current structured résumé
+- **THEN** the fit analysis runs on the CV text alone, exactly as before, with no error
+
