@@ -13,10 +13,10 @@
 
 ## 3. Frontend
 
-- [ ] 3.1 Add `quota { used: number; limit: number; remaining: number }` to `JobFitResponse` in `web/src/lib/types.ts`.
-- [ ] 3.2 `JobFitAnalysis.svelte` (sidebar): show "N/10 used"; when `remaining == 0` and no analysis exists for this job (new job), show a limit notice instead of the compute CTA; a recompute of an already-analysed job stays available.
-- [ ] 3.3 `jobs/[slug]/fit/+page.svelte`: show usage; when it would be a new-job analysis and `remaining == 0`, render the limit message and do NOT open the EventSource; recompute of a cached analysis stays allowed.
+- [x] 3.1 Add `quota { used: number; limit: number; remaining: number }` to `JobFitResponse` in `web/src/lib/types.ts`.
+- [x] 3.2 `JobFitAnalysis.svelte` (sidebar): show "N/10 used"; when `remaining == 0` and no analysis exists for this job (new job), show a limit notice instead of the compute CTA; a recompute of an already-analysed job stays available.
+- [x] 3.3 `jobs/[slug]/fit/+page.svelte`: show usage; when it would be a new-job analysis and `remaining == 0`, render the limit message and do NOT open the EventSource; recompute of a cached analysis stays allowed.
 
 ## 4. Verification
 
-- [ ] 4.1 Backend: `go build ./... && go vet ./... && go test ./...` green. Web: `svelte-check`, web unit tests, and lint clean; visual-verify the sidebar + fit page usage/limit states.
+- [x] 4.1 Backend: `go build ./... && go vet ./... && go test ./...` green. Web: `svelte-check`, web unit tests, and lint clean; visual-verify the sidebar + fit page usage/limit states.

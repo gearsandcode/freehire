@@ -47,6 +47,11 @@
   // paints instantly and offers a manual Recompute — so a refresh never silently burns
   // three LLM calls, and a fresh cache never recomputes.
   const coldStart = $derived(!data.fit?.analysis);
+  // A brand-new job can't be analysed once the monthly quota is spent — the stream would
+  // 429. A recompute of an already-cached analysis stays free, so this gates cold starts
+  // only (never the Recompute button).
+  const quota = $derived(data.fit?.quota ?? null);
+  const blockedNew = $derived(coldStart && !!quota && quota.remaining <= 0);
   const dimensions = $derived(analysis?.dimensions ?? []);
   const requirements = $derived(analysis?.requirement_match?.length ? analysis.requirement_match : stream.requirements);
 
@@ -80,7 +85,7 @@
   }
 
   onMount(() => {
-    if (isAuthenticated() && coldStart && (data.fit?.has_cv ?? true)) start();
+    if (isAuthenticated() && coldStart && (data.fit?.has_cv ?? true) && !blockedNew) start();
   });
   onDestroy(stop);
 
@@ -207,8 +212,17 @@
       </p>
     {/if}
 
+    <!-- Monthly quota spent: a fresh analysis can't run (recompute of an already-analysed
+         role stays available on those pages). -->
+    {#if blockedNew}
+      <div class="fit-reveal flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-card p-10 text-center" style="--i:1">
+        <p class="text-sm font-medium">You've used all {quota?.limit} AI fit analyses for this month.</p>
+        <p class="text-xs text-muted-foreground">Your quota frees up as older analyses pass the 30-day mark. Analyses you've already run stay available.</p>
+      </div>
+    {/if}
+
     <!-- Streaming: stage stepper + thinking -->
-    {#if streaming || (!analysis && !stream.error)}
+    {#if !blockedNew && (streaming || (!analysis && !stream.error))}
       <section class="rounded-2xl border border-border bg-card p-6 sm:px-8">
         <!-- Stage stepper: evenly-spaced nodes over a single connecting rail. -->
         <div class="relative flex">

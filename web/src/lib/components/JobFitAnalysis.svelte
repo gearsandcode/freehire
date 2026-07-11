@@ -29,6 +29,10 @@
 
   const analysis = $derived(data?.analysis ?? null);
   const topGap = $derived(analysis?.gaps?.[0] ?? null);
+  // A new (never-analysed) job can't be analysed once the monthly quota is spent; a
+  // recompute of an already-analysed job stays free, so this only gates the fresh CTA.
+  const quota = $derived(data?.quota ?? null);
+  const quotaSpent = $derived(!!quota && quota.remaining <= 0);
 
   const toneText: Record<Tone, string> = {
     strong: 'text-emerald-600 dark:text-emerald-400',
@@ -61,8 +65,13 @@
         View full analysis <ArrowRight class="size-3.5 transition-transform group-hover:translate-x-0.5" />
       </span>
     </a>
+  {:else if quotaSpent}
+    <p class="text-sm text-muted-foreground">You've used all {quota?.limit} AI fit analyses for this month. Your quota frees up as older analyses pass the 30-day mark.</p>
   {:else}
     <p class="text-sm text-muted-foreground">A recruiter-style read of your CV against this role — title fit, experience, and the gaps an ATS flags.</p>
     <Button variant="primary" size="sm" href={resolve('/jobs/[slug]/fit', { slug })}>Analyse fit with AI</Button>
+    {#if quota}
+      <p class="text-xs text-muted-foreground">{quota.used}/{quota.limit} used this month</p>
+    {/if}
   {/if}
 </section>
