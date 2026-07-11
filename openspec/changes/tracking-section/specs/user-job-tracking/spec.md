@@ -19,19 +19,19 @@ The system SHALL provide an authenticated `GET /api/v1/me/tracking/analyses` end
 - **WHEN** the caller's CV was re-uploaded after an analysis was computed
 - **THEN** that item is returned with `stale: true`
 
-### Requirement: Tracking routes with back-compat aliases
+### Requirement: Tracking routes moved to /me/tracking
 
-The per-user tracking endpoints SHALL be served canonically under `/api/v1/me/tracking` (`""`, `/viewed`, `/pipeline`, `/swipe`, `/analyses`), and the previous `/api/v1/me/jobs*` paths MUST continue to work as aliases to the same handlers so already-released API clients (the freehire-cli) are not broken.
+The per-user tracking endpoints SHALL be served under `/api/v1/me/tracking` (`""`, `/viewed`, `/pipeline`, `/swipe`, `/analyses`), replacing the previous `/api/v1/me/jobs*` paths, which MUST no longer be registered. This is a breaking API change: clients (the freehire-cli) MUST migrate to `/me/tracking`.
 
 #### Scenario: Canonical tracking path
 
 - **WHEN** a caller requests `GET /api/v1/me/tracking`
-- **THEN** it returns the caller's tracked jobs exactly as the legacy `/api/v1/me/jobs` did
+- **THEN** it returns the caller's tracked jobs (the listing previously served at `/api/v1/me/jobs`)
 
-#### Scenario: Legacy alias still works
+#### Scenario: Old path is gone
 
-- **WHEN** an existing client requests `GET /api/v1/me/jobs`
-- **THEN** the system serves the same response as `GET /api/v1/me/tracking` (no breakage)
+- **WHEN** a client requests `GET /api/v1/me/jobs`
+- **THEN** the system returns `404` — the path is no longer registered
 
 ### Requirement: Tracking section renamed with URL redirects
 

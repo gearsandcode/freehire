@@ -20,7 +20,7 @@ type myJobResponse struct {
 	Notes     *string     `json:"notes"`
 }
 
-// ListMyJobs returns the authenticated user's job interactions joined with the
+// ListTrackedJobs returns the authenticated user's job interactions joined with the
 // jobs, most recently touched first, narrowed by ?filter=all|viewed|saved|applied|board
 // (default all; viewed is the view-only subset — neither saved nor applied;
 // board is the Kanban view — jobs with saved_at, applied_at, or stage set).
@@ -28,7 +28,7 @@ type myJobResponse struct {
 // counts for the tab badges — which is also why this writes its own envelope
 // instead of listResponse. Closed jobs stay listed: a user's history must not
 // shrink when a posting closes.
-func (a *API) ListMyJobs(c *fiber.Ctx) error {
+func (a *API) ListTrackedJobs(c *fiber.Ctx) error {
 	userID, err := requireUserID(c)
 	if err != nil {
 		return err
@@ -69,11 +69,11 @@ func (a *API) ListMyJobs(c *fiber.Ctx) error {
 	})
 }
 
-// MyPipeline returns the authenticated caller's application-pipeline snapshot:
+// TrackingPipeline returns the authenticated caller's application-pipeline snapshot:
 // the total application count and its distribution across the seven status
 // buckets, aggregated server-side over all of the caller's applications. The SPA
 // Pipeline tab renders the Sankey and the interview/offer rate cards from this.
-func (a *API) MyPipeline(c *fiber.Ctx) error {
+func (a *API) TrackingPipeline(c *fiber.Ctx) error {
 	userID, err := requireUserID(c)
 	if err != nil {
 		return err

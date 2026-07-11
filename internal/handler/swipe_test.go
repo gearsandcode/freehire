@@ -31,7 +31,7 @@ func deckApp(s searcher, excluded []int64) (*fiber.App, *auth.Issuer) {
 	iss := auth.NewIssuer("test-secret", time.Hour)
 	h := &API{search: s, issuer: iss, tracking: jobtracking.New(deckRepo{excluded: excluded})}
 	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
-	app.Get("/api/v1/me/jobs/swipe", auth.RequireAuth(iss), h.SwipeDeck)
+	app.Get("/api/v1/me/tracking/swipe", auth.RequireAuth(iss), h.SwipeDeck)
 	return app, iss
 }
 
@@ -58,7 +58,7 @@ func TestSwipeDeck_ExcludesJudgedJobsAndForwardsFilters(t *testing.T) {
 	}}
 	app, iss := deckApp(fake, []int64{10, 20})
 
-	status, body := deckGet(t, app, iss, "/api/v1/me/jobs/swipe?q=golang&seniority=senior")
+	status, body := deckGet(t, app, iss, "/api/v1/me/tracking/swipe?q=golang&seniority=senior")
 	if status != fiber.StatusOK {
 		t.Fatalf("status = %d, want 200", status)
 	}
@@ -89,7 +89,7 @@ func TestSwipeDeck_NoExclusionWhenNothingJudged(t *testing.T) {
 	fake := &fakeSearcher{}
 	app, iss := deckApp(fake, nil)
 
-	if status, _ := deckGet(t, app, iss, "/api/v1/me/jobs/swipe?regions=eu"); status != fiber.StatusOK {
+	if status, _ := deckGet(t, app, iss, "/api/v1/me/tracking/swipe?regions=eu"); status != fiber.StatusOK {
 		t.Fatalf("status = %d, want 200", status)
 	}
 	groups, _ := fake.got.Filter.([][]string)
@@ -109,7 +109,7 @@ func TestSwipeDeck_RequiresAuth(t *testing.T) {
 	fake := &fakeSearcher{}
 	app, _ := deckApp(fake, nil)
 
-	status, _ := deckGet(t, app, nil, "/api/v1/me/jobs/swipe")
+	status, _ := deckGet(t, app, nil, "/api/v1/me/tracking/swipe")
 	if status != fiber.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", status)
 	}
@@ -120,7 +120,7 @@ func TestSwipeDeck_RequiresAuth(t *testing.T) {
 
 func TestSwipeDeck_DisabledReturns503(t *testing.T) {
 	app, iss := deckApp(nil, nil)
-	status, _ := deckGet(t, app, iss, "/api/v1/me/jobs/swipe")
+	status, _ := deckGet(t, app, iss, "/api/v1/me/tracking/swipe")
 	if status != fiber.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", status)
 	}

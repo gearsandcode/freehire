@@ -420,6 +420,11 @@ type Querier interface {
 	// Every board currently failing or cooled down, worst first — the operator's
 	// "what's broken" query and the source of the per-run summary log.
 	ListUnhealthyBoards(ctx context.Context) ([]ListUnhealthyBoardsRow, error)
+	// Every job the caller has analyzed, newest first, joined to the job for display. Powers
+	// the Tracking → AI fit tab. Includes closed jobs (surfaced with a badge). The stored
+	// staleness stamps ride along so the handler can flag rows whose CV/job/model has since
+	// changed, and the analysis blob carries the overall score + verdict the list shows.
+	ListUserJobAnalyses(ctx context.Context, userID int64) ([]ListUserJobAnalysesRow, error)
 	// A user's job interactions joined with the job rows, most recently touched
 	// first (GREATEST ignores NULLs; viewed_at is always set). filter narrows to
 	// viewed-only/saved/applied subsets; 'all' is every interaction, 'viewed' is

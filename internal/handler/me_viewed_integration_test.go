@@ -1,6 +1,6 @@
 //go:build integration
 
-// Integration test for the viewed-slugs wire contract: GET /api/v1/me/jobs/viewed
+// Integration test for the viewed-slugs wire contract: GET /api/v1/me/tracking/viewed
 // must return exactly the public_slugs the authenticated caller has interacted
 // with, scoped to that caller, as a flat {"data": [...]} list, and reject an
 // unauthenticated request. The SPA reads this to dim already-seen cards without
@@ -73,7 +73,7 @@ func TestListViewedSlugsEndpoint(t *testing.T) {
 	iss := auth.NewIssuer("test-secret", time.Hour)
 	h := &API{pool: pool, queries: queries, issuer: iss, tracking: jobtracking.New(jobtracking.NewQueriesRepository(queries))}
 	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
-	app.Get("/api/v1/me/jobs/viewed", auth.RequireAuthOrKey(iss, queries), h.ListViewedSlugs)
+	app.Get("/api/v1/me/tracking/viewed", auth.RequireAuthOrKey(iss, queries), h.ListViewedSlugs)
 
 	getSlugs := func(t *testing.T, userID int64) []string {
 		t.Helper()
@@ -81,7 +81,7 @@ func TestListViewedSlugsEndpoint(t *testing.T) {
 		if err != nil {
 			t.Fatalf("issue token: %v", err)
 		}
-		req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/jobs/viewed", nil)
+		req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/tracking/viewed", nil)
 		req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
 		resp, err := app.Test(req)
 		if err != nil {
@@ -119,7 +119,7 @@ func TestListViewedSlugsEndpoint(t *testing.T) {
 	})
 
 	t.Run("unauthenticated request is rejected", func(t *testing.T) {
-		req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/jobs/viewed", nil)
+		req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/tracking/viewed", nil)
 		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("GET viewed (no auth): %v", err)

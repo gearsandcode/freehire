@@ -69,6 +69,63 @@ func (q *Queries) GetUserJobAnalysis(ctx context.Context, arg GetUserJobAnalysis
 	return i, err
 }
 
+const listUserJobAnalyses = `-- name: ListUserJobAnalyses :many
+SELECT j.public_slug, j.title, j.company, j.closed_at, j.content_hash,
+       a.analysis, a.model, a.cv_uploaded_at, a.job_content_hash, a.created_at
+FROM user_job_analysis a
+JOIN jobs j ON j.id = a.job_id
+WHERE a.user_id = $1
+ORDER BY a.created_at DESC
+`
+
+type ListUserJobAnalysesRow struct {
+	PublicSlug     string             `json:"public_slug"`
+	Title          string             `json:"title"`
+	Company        string             `json:"company"`
+	ClosedAt       pgtype.Timestamptz `json:"closed_at"`
+	ContentHash    pgtype.Text        `json:"content_hash"`
+	Analysis       []byte             `json:"analysis"`
+	Model          string             `json:"model"`
+	CvUploadedAt   pgtype.Timestamptz `json:"cv_uploaded_at"`
+	JobContentHash pgtype.Text        `json:"job_content_hash"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+// Every job the caller has analyzed, newest first, joined to the job for display. Powers
+// the Tracking → AI fit tab. Includes closed jobs (surfaced with a badge). The stored
+// staleness stamps ride along so the handler can flag rows whose CV/job/model has since
+// changed, and the analysis blob carries the overall score + verdict the list shows.
+func (q *Queries) ListUserJobAnalyses(ctx context.Context, userID int64) ([]ListUserJobAnalysesRow, error) {
+	rows, err := q.db.Query(ctx, listUserJobAnalyses, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserJobAnalysesRow{}
+	for rows.Next() {
+		var i ListUserJobAnalysesRow
+		if err := rows.Scan(
+			&i.PublicSlug,
+			&i.Title,
+			&i.Company,
+			&i.ClosedAt,
+			&i.ContentHash,
+			&i.Analysis,
+			&i.Model,
+			&i.CvUploadedAt,
+			&i.JobContentHash,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertUserJobAnalysis = `-- name: UpsertUserJobAnalysis :exec
 INSERT INTO user_job_analysis (user_id, job_id, analysis, model, cv_uploaded_at, job_content_hash, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, now())

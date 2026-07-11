@@ -1,6 +1,6 @@
 //go:build integration
 
-// Integration test for the my-jobs listing wire contract: GET /api/v1/me/jobs
+// Integration test for the my-jobs listing wire contract: GET /api/v1/me/tracking
 // must return the user's interactions with jobs in the shared jobview shape (no
 // internal id), honor the filter param in data and meta.total, carry the per-tab
 // counts, and keep closed jobs in the history. Run with:
@@ -63,7 +63,7 @@ func TestListMyJobsEndpoint(t *testing.T) {
 	}
 	h := &API{pool: pool, queries: queries, issuer: iss, tracking: jobtracking.New(jobtracking.NewQueriesRepository(queries))}
 	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
-	app.Get("/api/v1/me/jobs", auth.RequireAuth(iss), h.ListMyJobs)
+	app.Get("/api/v1/me/tracking", auth.RequireAuth(iss), h.ListTrackedJobs)
 
 	type item struct {
 		Job       map[string]json.RawMessage `json:"job"`
@@ -106,7 +106,7 @@ func TestListMyJobsEndpoint(t *testing.T) {
 	}
 
 	t.Run("all interactions with jobview-shaped jobs and counts", func(t *testing.T) {
-		body := doList(t, "/api/v1/me/jobs")
+		body := doList(t, "/api/v1/me/tracking")
 		if len(body.Data) != 2 || body.Meta.Total != 2 {
 			t.Fatalf("got %d items, total %d, want 2/2", len(body.Data), body.Meta.Total)
 		}
@@ -124,7 +124,7 @@ func TestListMyJobsEndpoint(t *testing.T) {
 	})
 
 	t.Run("filter=viewed returns only view-only interactions", func(t *testing.T) {
-		body := doList(t, "/api/v1/me/jobs?filter=viewed")
+		body := doList(t, "/api/v1/me/tracking?filter=viewed")
 		if len(body.Data) != 1 || body.Meta.Total != 1 {
 			t.Fatalf("got %d items, total %d, want 1/1", len(body.Data), body.Meta.Total)
 		}
@@ -134,7 +134,7 @@ func TestListMyJobsEndpoint(t *testing.T) {
 	})
 
 	t.Run("filter=applied narrows data and total, keeps closed jobs", func(t *testing.T) {
-		body := doList(t, "/api/v1/me/jobs?filter=applied")
+		body := doList(t, "/api/v1/me/tracking?filter=applied")
 		if len(body.Data) != 1 || body.Meta.Total != 1 {
 			t.Fatalf("got %d items, total %d, want 1/1", len(body.Data), body.Meta.Total)
 		}
@@ -204,13 +204,13 @@ func TestListMyJobsBoardFilter(t *testing.T) {
 	}
 	h := &API{pool: pool, queries: queries, issuer: iss, tracking: jobtracking.New(jobtracking.NewQueriesRepository(queries))}
 	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
-	app.Get("/api/v1/me/jobs", auth.RequireAuth(iss), h.ListMyJobs)
+	app.Get("/api/v1/me/tracking", auth.RequireAuth(iss), h.ListTrackedJobs)
 
-	req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/jobs?filter=board", nil)
+	req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/tracking?filter=board", nil)
 	req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
 	resp, err := app.Test(req)
 	if err != nil {
-		t.Fatalf("GET /api/v1/me/jobs?filter=board: %v", err)
+		t.Fatalf("GET /api/v1/me/tracking?filter=board: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != fiber.StatusOK {

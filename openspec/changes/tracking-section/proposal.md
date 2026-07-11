@@ -8,8 +8,8 @@
 - New endpoint `GET /api/v1/me/tracking/analyses` returning the analysed jobs with the caller's `quota` in `meta`.
 - **Rename the section "My jobs" → "Tracking"** across the UI, the frontend URLs, and the backend:
   - Frontend routes `/my/jobs/*` → `/my/tracking/*` (Board index, Pipeline, History, + the new AI fit tab); old `/my/jobs/*` URLs **308-redirect** to the new paths so bookmarks/links keep working.
-  - Backend: canonical routes move to `/me/tracking/*`; the old `/me/jobs/*` routes are **retained as back-compat aliases** (the released freehire-cli calls `GET /me/jobs`), so nothing breaks. Handler file `internal/handler/me_jobs.go` → `me_tracking.go`, handler methods renamed to the Tracking vocabulary.
-- **BREAKING (soft):** the canonical API path changes; old paths keep working via aliases, so this is non-breaking in practice. The freehire-cli migrates to `/me/tracking` on its next release (seam).
+  - Backend: routes move to `/me/tracking/*`; the old `/me/jobs/*` routes are **removed** (no alias). Handler file `internal/handler/me_jobs.go` → `me_tracking.go`, handler methods renamed to the Tracking vocabulary.
+- **BREAKING:** `/me/jobs*` is gone. The freehire-cli (which calls `GET /me/jobs`) is updated to `/me/tracking` in the same pass, but already-installed CLI binaries break until re-released/reinstalled.
 
 ## Capabilities
 

@@ -1,6 +1,6 @@
 //go:build integration
 
-// Integration test for the Pipeline aggregate endpoint: GET /api/v1/me/jobs/pipeline
+// Integration test for the Pipeline aggregate endpoint: GET /api/v1/me/tracking/pipeline
 // must aggregate the caller's applications into the seven buckets server-side,
 // counting an applied-with-no-stage row as no_answer, excluding saved-only and
 // viewed-only rows, and requiring authentication. Run with:
@@ -88,10 +88,10 @@ func TestMyPipelineEndpoint(t *testing.T) {
 	}
 	h := &API{pool: pool, queries: queries, issuer: iss, tracking: jobtracking.New(jobtracking.NewQueriesRepository(queries))}
 	app := fiber.New(fiber.Config{ErrorHandler: RenderError})
-	app.Get("/api/v1/me/jobs/pipeline", auth.RequireAuth(iss), h.MyPipeline)
+	app.Get("/api/v1/me/tracking/pipeline", auth.RequireAuth(iss), h.TrackingPipeline)
 
 	t.Run("aggregates applications into buckets", func(t *testing.T) {
-		req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/jobs/pipeline", nil)
+		req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/tracking/pipeline", nil)
 		req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: token})
 		resp, err := app.Test(req)
 		if err != nil {
@@ -141,7 +141,7 @@ func TestMyPipelineEndpoint(t *testing.T) {
 	})
 
 	t.Run("unauthenticated is 401", func(t *testing.T) {
-		req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/jobs/pipeline", nil)
+		req := httptest.NewRequest(fiber.MethodGet, "/api/v1/me/tracking/pipeline", nil)
 		resp, err := app.Test(req)
 		if err != nil {
 			t.Fatalf("GET pipeline: %v", err)

@@ -58,6 +58,7 @@ type jobFitStore interface {
 	GetUserJobAnalysis(ctx context.Context, arg db.GetUserJobAnalysisParams) (db.GetUserJobAnalysisRow, error)
 	UpsertUserJobAnalysis(ctx context.Context, arg db.UpsertUserJobAnalysisParams) error
 	CountRecentUserJobAnalyses(ctx context.Context, arg db.CountRecentUserJobAnalysesParams) (int64, error)
+	ListUserJobAnalyses(ctx context.Context, userID int64) ([]db.ListUserJobAnalysesRow, error)
 }
 
 // jobFitResponse is the wire shape for the LLM fit analysis. HasCV is false when the
@@ -256,9 +257,15 @@ func (a *API) companyInfo(c *fiber.Ctx, companySlug string) string {
 // a NULL stamp must not force an endless recompute); a stamp appearing on one side only
 // is a change.
 func stampsFresh(row db.GetUserJobAnalysisRow, cvUploadedAt *time.Time, jobHash pgtype.Text, model string) bool {
-	return row.Model == model &&
-		sameTime(row.CvUploadedAt, cvUploadedAt) &&
-		sameText(row.JobContentHash, jobHash)
+	return stampsMatch(row.Model, row.CvUploadedAt, row.JobContentHash, cvUploadedAt, jobHash, model)
+}
+
+// stampsMatch is stampsFresh over the raw stored stamps, so callers holding a different
+// row type (e.g. the analysed-jobs list) can reuse the same freshness rule.
+func stampsMatch(storedModel string, storedCV pgtype.Timestamptz, storedHash pgtype.Text, liveCV *time.Time, liveHash pgtype.Text, liveModel string) bool {
+	return storedModel == liveModel &&
+		sameTime(storedCV, liveCV) &&
+		sameText(storedHash, liveHash)
 }
 
 func sameTime(stored pgtype.Timestamptz, live *time.Time) bool {

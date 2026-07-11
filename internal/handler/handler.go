@@ -300,14 +300,15 @@ func Register(app *fiber.App, cfg Config) {
 	api.Post("/reports/:id/resolve", keyAuth, requireModerator, a.ResolveReport)
 	api.Post("/reports/:id/dismiss", keyAuth, requireModerator, a.DismissReport)
 
-	// User-scoped reads live under /me (consistent with /auth/me): the my-jobs
-	// listing joins the caller's interactions with the jobs they touch, and the
-	// viewed-slugs set lets the SPA dim already-seen cards in the public browse
-	// list without making that list authenticated.
-	api.Get("/me/jobs", keyAuth, a.ListMyJobs)
-	api.Get("/me/jobs/viewed", keyAuth, a.ListViewedSlugs)
-	api.Get("/me/jobs/pipeline", keyAuth, a.MyPipeline)
-	api.Get("/me/jobs/swipe", keyAuth, a.SwipeDeck)
+	// User-scoped reads live under /me (consistent with /auth/me): the tracking
+	// listing joins the caller's interactions with the jobs they touch, viewed-slugs
+	// lets the SPA dim already-seen cards without authenticating the public browse
+	// list, and analyses lists the jobs the caller has run the AI fit analysis on.
+	api.Get("/me/tracking", keyAuth, a.ListTrackedJobs)
+	api.Get("/me/tracking/viewed", keyAuth, a.ListViewedSlugs)
+	api.Get("/me/tracking/pipeline", keyAuth, a.TrackingPipeline)
+	api.Get("/me/tracking/swipe", keyAuth, a.SwipeDeck)
+	api.Get("/me/tracking/analyses", keyAuth, a.ListMyAnalyses)
 	api.Get("/me/recommendations", keyAuth, a.Recommendations)
 
 	// API-key management is cookie-only (RequireAuth): a leaked key must not be
