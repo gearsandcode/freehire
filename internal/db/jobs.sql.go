@@ -171,7 +171,7 @@ func (q *Queries) ExistingExternalIDs(ctx context.Context, source string) ([]str
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
 WHERE id = $1
 `
@@ -221,12 +221,13 @@ func (q *Queries) GetJob(ctx context.Context, id int64) (Job, error) {
 		&i.RoleFingerprint,
 		&i.SemanticEmbeddedModel,
 		&i.SemanticEmbeddedHash,
+		&i.DuplicateOf,
 	)
 	return i, err
 }
 
 const getJobBySlug = `-- name: GetJobBySlug :one
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
 WHERE public_slug = $1
 `
@@ -276,12 +277,13 @@ func (q *Queries) GetJobBySlug(ctx context.Context, publicSlug string) (Job, err
 		&i.RoleFingerprint,
 		&i.SemanticEmbeddedModel,
 		&i.SemanticEmbeddedHash,
+		&i.DuplicateOf,
 	)
 	return i, err
 }
 
 const getJobBySourceExternalID = `-- name: GetJobBySourceExternalID :one
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
 WHERE source = $1 AND external_id = $2
 `
@@ -338,6 +340,7 @@ func (q *Queries) GetJobBySourceExternalID(ctx context.Context, arg GetJobBySour
 		&i.RoleFingerprint,
 		&i.SemanticEmbeddedModel,
 		&i.SemanticEmbeddedHash,
+		&i.DuplicateOf,
 	)
 	return i, err
 }
@@ -436,7 +439,7 @@ func (q *Queries) ListJobIDsUpdatedAfter(ctx context.Context, arg ListJobIDsUpda
 const listJobSitemapFreshest = `-- name: ListJobSitemapFreshest :many
 SELECT public_slug, updated_at
 FROM jobs
-WHERE closed_at IS NULL
+WHERE closed_at IS NULL AND duplicate_of IS NULL
 ORDER BY id DESC
 LIMIT $1
 `
@@ -473,9 +476,9 @@ func (q *Queries) ListJobSitemapFreshest(ctx context.Context, rowLimit int32) ([
 }
 
 const listJobs = `-- name: ListJobs :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
-WHERE closed_at IS NULL
+WHERE closed_at IS NULL AND duplicate_of IS NULL
 ORDER BY created_at DESC, id DESC
 LIMIT $1 OFFSET $2
 `
@@ -539,6 +542,7 @@ func (q *Queries) ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, erro
 			&i.RoleFingerprint,
 			&i.SemanticEmbeddedModel,
 			&i.SemanticEmbeddedHash,
+			&i.DuplicateOf,
 		); err != nil {
 			return nil, err
 		}
@@ -551,9 +555,9 @@ func (q *Queries) ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, erro
 }
 
 const listJobsByCompany = `-- name: ListJobsByCompany :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
-WHERE company_slug = $1 AND closed_at IS NULL
+WHERE company_slug = $1 AND closed_at IS NULL AND duplicate_of IS NULL
 ORDER BY created_at DESC, id DESC
 LIMIT $2 OFFSET $3
 `
@@ -564,6 +568,8 @@ type ListJobsByCompanyParams struct {
 	Offset      int32  `json:"offset"`
 }
 
+// duplicate_of IS NULL collapses role-cluster reposts to their canonical row, matching
+// the /jobs list so a company page shows one card per role, not every repost.
 func (q *Queries) ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyParams) ([]Job, error) {
 	rows, err := q.db.Query(ctx, listJobsByCompany, arg.CompanySlug, arg.Limit, arg.Offset)
 	if err != nil {
@@ -615,6 +621,7 @@ func (q *Queries) ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyPa
 			&i.RoleFingerprint,
 			&i.SemanticEmbeddedModel,
 			&i.SemanticEmbeddedHash,
+			&i.DuplicateOf,
 		); err != nil {
 			return nil, err
 		}
@@ -627,7 +634,7 @@ func (q *Queries) ListJobsByCompany(ctx context.Context, arg ListJobsByCompanyPa
 }
 
 const listJobsByIDAfter = `-- name: ListJobsByIDAfter :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
 WHERE id > $1
 ORDER BY id
@@ -693,6 +700,7 @@ func (q *Queries) ListJobsByIDAfter(ctx context.Context, arg ListJobsByIDAfterPa
 			&i.RoleFingerprint,
 			&i.SemanticEmbeddedModel,
 			&i.SemanticEmbeddedHash,
+			&i.DuplicateOf,
 		); err != nil {
 			return nil, err
 		}
@@ -705,7 +713,7 @@ func (q *Queries) ListJobsByIDAfter(ctx context.Context, arg ListJobsByIDAfterPa
 }
 
 const listJobsBySourceAfter = `-- name: ListJobsBySourceAfter :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
 WHERE source = $1 AND id > $2
 ORDER BY id
@@ -772,6 +780,7 @@ func (q *Queries) ListJobsBySourceAfter(ctx context.Context, arg ListJobsBySourc
 			&i.RoleFingerprint,
 			&i.SemanticEmbeddedModel,
 			&i.SemanticEmbeddedHash,
+			&i.DuplicateOf,
 		); err != nil {
 			return nil, err
 		}
@@ -784,7 +793,7 @@ func (q *Queries) ListJobsBySourceAfter(ctx context.Context, arg ListJobsBySourc
 }
 
 const listJobsUpdatedAfter = `-- name: ListJobsUpdatedAfter :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
 WHERE id > $1 AND updated_at >= $2
 ORDER BY id
@@ -854,6 +863,7 @@ func (q *Queries) ListJobsUpdatedAfter(ctx context.Context, arg ListJobsUpdatedA
 			&i.RoleFingerprint,
 			&i.SemanticEmbeddedModel,
 			&i.SemanticEmbeddedHash,
+			&i.DuplicateOf,
 		); err != nil {
 			return nil, err
 		}
@@ -902,7 +912,7 @@ func (q *Queries) ListOpenJobIDsPostedAfter(ctx context.Context, arg ListOpenJob
 }
 
 const listOpenJobsPostedAfter = `-- name: ListOpenJobsPostedAfter :many
-SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+SELECT id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 FROM jobs
 WHERE id > $1 AND closed_at IS NULL AND COALESCE(posted_at, created_at) >= $2
 ORDER BY id
@@ -974,6 +984,7 @@ func (q *Queries) ListOpenJobsPostedAfter(ctx context.Context, arg ListOpenJobsP
 			&i.RoleFingerprint,
 			&i.SemanticEmbeddedModel,
 			&i.SemanticEmbeddedHash,
+			&i.DuplicateOf,
 		); err != nil {
 			return nil, err
 		}
@@ -1035,6 +1046,44 @@ WHERE jobs.company_slug = c.slug
 // re-runs idempotent and cheap.
 func (q *Queries) PropagateCollectionsToJobs(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, propagateCollectionsToJobs)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const recomputeRoleDuplicates = `-- name: RecomputeRoleDuplicates :execrows
+WITH canon AS (
+    SELECT company_slug, role_fingerprint, MIN(id) AS canon_id, COUNT(*) AS n
+    FROM jobs
+    WHERE closed_at IS NULL AND role_fingerprint IS NOT NULL AND role_fingerprint <> ''
+    GROUP BY company_slug, role_fingerprint
+),
+target AS (
+    SELECT j.id,
+        CASE WHEN c.n > 1 AND j.id <> c.canon_id THEN c.canon_id END AS new_dup
+    FROM jobs j
+    JOIN canon c
+      ON j.company_slug = c.company_slug AND j.role_fingerprint = c.role_fingerprint
+    WHERE j.closed_at IS NULL
+)
+UPDATE jobs j
+SET duplicate_of = t.new_dup,
+    updated_at   = now()
+FROM target t
+WHERE j.id = t.id
+  AND j.duplicate_of IS DISTINCT FROM t.new_dup
+`
+
+// Collapse each role cluster to one canonical open job. For every OPEN, fingerprinted
+// job, the canon is the min(id) among its (company_slug, role_fingerprint) cluster's
+// open rows; the canon and any singleton/empty-fingerprint row get duplicate_of NULL,
+// the other reposts point to the canon. Rows are never deleted, so the reality counts
+// (which count the rows) are untouched. The IS DISTINCT FROM guard makes re-runs cheap
+// and idempotent, and a closed canon fails over to the next min(id) on the next run.
+// Closed rows are left as-is (excluded by closed_at everywhere the marker is read).
+func (q *Queries) RecomputeRoleDuplicates(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, recomputeRoleDuplicates)
 	if err != nil {
 		return 0, err
 	}
@@ -1387,7 +1436,7 @@ SET title        = $1,
     updated_by   = $20::bigint,
     updated_at   = now()
 WHERE public_slug = $21 AND created_by IS NOT NULL
-RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 `
 
 type UpdateManualJobParams struct {
@@ -1493,6 +1542,7 @@ func (q *Queries) UpdateManualJob(ctx context.Context, arg UpdateManualJobParams
 		&i.RoleFingerprint,
 		&i.SemanticEmbeddedModel,
 		&i.SemanticEmbeddedHash,
+		&i.DuplicateOf,
 	)
 	return i, err
 }
@@ -1565,7 +1615,7 @@ ON CONFLICT (source, external_id) DO UPDATE SET
     closed_at    = NULL,
     liveness_strikes = CASE WHEN jobs.closed_at IS NOT NULL THEN 0 ELSE jobs.liveness_strikes END,
     updated_at   = now()
-RETURNING jobs.id, jobs.source, jobs.external_id, jobs.url, jobs.title, jobs.company, jobs.location, jobs.remote, jobs.description, jobs.posted_at, jobs.created_at, jobs.updated_at, jobs.company_slug, jobs.enrichment, jobs.enriched_at, jobs.enrichment_version, jobs.public_slug, jobs.last_seen_at, jobs.closed_at, jobs.countries, jobs.regions, jobs.work_mode, jobs.liveness_strikes, jobs.skills, jobs.seniority, jobs.category, jobs.created_by, jobs.updated_by, jobs.posting_language, jobs.employment_type, jobs.education_level, jobs.experience_years_min, jobs.collections, jobs.content_hash, jobs.english_level, jobs.cities, jobs.view_count, jobs.applied_count, jobs.role_fingerprint, jobs.semantic_embedded_model, jobs.semantic_embedded_hash,
+RETURNING jobs.id, jobs.source, jobs.external_id, jobs.url, jobs.title, jobs.company, jobs.location, jobs.remote, jobs.description, jobs.posted_at, jobs.created_at, jobs.updated_at, jobs.company_slug, jobs.enrichment, jobs.enriched_at, jobs.enrichment_version, jobs.public_slug, jobs.last_seen_at, jobs.closed_at, jobs.countries, jobs.regions, jobs.work_mode, jobs.liveness_strikes, jobs.skills, jobs.seniority, jobs.category, jobs.created_by, jobs.updated_by, jobs.posting_language, jobs.employment_type, jobs.education_level, jobs.experience_years_min, jobs.collections, jobs.content_hash, jobs.english_level, jobs.cities, jobs.view_count, jobs.applied_count, jobs.role_fingerprint, jobs.semantic_embedded_model, jobs.semantic_embedded_hash, jobs.duplicate_of,
     NOT COALESCE((SELECT existed FROM existing), false) AS inserted,
     ((SELECT old_hash FROM existing) IS DISTINCT FROM $24) AS changed
 `
@@ -1695,6 +1745,7 @@ func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) (UpsertJob
 		&i.Job.RoleFingerprint,
 		&i.Job.SemanticEmbeddedModel,
 		&i.Job.SemanticEmbeddedHash,
+		&i.Job.DuplicateOf,
 		&i.Inserted,
 		&i.Changed,
 	)
@@ -1753,7 +1804,7 @@ ON CONFLICT (source, external_id) DO UPDATE SET
     closed_at    = NULL,
     liveness_strikes = CASE WHEN jobs.closed_at IS NOT NULL THEN 0 ELSE jobs.liveness_strikes END,
     updated_at   = now()
-RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash
+RETURNING id, source, external_id, url, title, company, location, remote, description, posted_at, created_at, updated_at, company_slug, enrichment, enriched_at, enrichment_version, public_slug, last_seen_at, closed_at, countries, regions, work_mode, liveness_strikes, skills, seniority, category, created_by, updated_by, posting_language, employment_type, education_level, experience_years_min, collections, content_hash, english_level, cities, view_count, applied_count, role_fingerprint, semantic_embedded_model, semantic_embedded_hash, duplicate_of
 `
 
 type UpsertManualJobParams struct {
@@ -1865,6 +1916,7 @@ func (q *Queries) UpsertManualJob(ctx context.Context, arg UpsertManualJobParams
 		&i.RoleFingerprint,
 		&i.SemanticEmbeddedModel,
 		&i.SemanticEmbeddedHash,
+		&i.DuplicateOf,
 	)
 	return i, err
 }
