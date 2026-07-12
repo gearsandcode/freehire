@@ -172,6 +172,13 @@ describe('jobPostingJsonLd', () => {
     expect(ld).not.toHaveProperty('experienceRequirements');
     expect(ld).not.toHaveProperty('educationRequirements');
   });
+
+  it('emits identifier from external_id, and omits it when absent', () => {
+    const withId = jobPostingJsonLd(postingJob({ company: 'Acme', external_id: 'gh-42' }), ORIGIN);
+    expect(withId.identifier).toEqual({ '@type': 'PropertyValue', name: 'Acme', value: 'gh-42' });
+
+    expect(jobPostingJsonLd(postingJob(), ORIGIN)).not.toHaveProperty('identifier');
+  });
 });
 
 describe('collectionPageJsonLd', () => {

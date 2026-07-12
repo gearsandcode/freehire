@@ -127,6 +127,17 @@ export function jobPostingJsonLd(job: Job, origin: string): Record<string, unkno
   // A closed posting is no longer accepting applications: mark it expired.
   if (job.closed_at) ld.validThrough = job.closed_at;
 
+  // identifier is the hiring org's own posting id (Google-recommended): external_id
+  // is the source's stable job id, so Google dedupes the vacancy across boards
+  // rather than reading us as a scraped copy.
+  if (job.external_id) {
+    ld.identifier = {
+      '@type': 'PropertyValue',
+      name: job.company || 'Unknown',
+      value: job.external_id,
+    };
+  }
+
   const empType = e.employment_type ? EMPLOYMENT_TYPE[e.employment_type] : undefined;
   if (empType) ld.employmentType = empType;
 
