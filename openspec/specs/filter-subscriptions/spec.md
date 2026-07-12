@@ -7,14 +7,26 @@ TBD - created by syncing change filter-subscriptions. Update Purpose after archi
 
 The system SHALL let an authenticated user subscribe one of their saved searches
 to a delivery channel, so that matching jobs are pushed to them. A subscription
-references a saved search (the filter of record) and a channel; at most one
-subscription MAY exist per (saved search, channel). Subscription management SHALL
+references a saved search (the filter of record) and a channel; the channel SHALL
+be one of the supported channels (`telegram` or `email`); at most one
+subscription MAY exist per (saved search, channel), so a user MAY subscribe the
+same saved search on both Telegram and email. Subscription management SHALL
 require the session cookie (`RequireAuth`), never an API key.
 
 #### Scenario: Create a subscription
 
 - **WHEN** an authenticated user POSTs `{saved_search_id, channel:"telegram"}` for a saved search they own
 - **THEN** the system creates a subscription with `active=true` and `start_at=now()`, and returns it as `{"data": subscription}`
+
+#### Scenario: Create an email subscription
+
+- **WHEN** an authenticated user POSTs `{saved_search_id, channel:"email"}` for a saved search they own
+- **THEN** the system creates an email subscription with `active=true`, no per-subscription destination stored, and returns it as `{"data": subscription}`
+
+#### Scenario: Unsupported channel is rejected
+
+- **WHEN** a user POSTs a subscription with a channel that is not `telegram` or `email`
+- **THEN** the system returns a 400 and creates no subscription
 
 #### Scenario: Duplicate subscription is rejected
 
@@ -95,9 +107,13 @@ they are not sent again.
 ### Requirement: Pluggable delivery channel
 
 The system SHALL deliver through a narrow `Notifier` abstraction selected by the
-subscription's channel, so additional channels (webhook, email) can be added
-without changing the matching engine. The `telegram` channel SHALL resolve the
-recipient from the user's linked Telegram chat.
+subscription's channel, dispatched by a channel router so additional channels can
+be added without changing the matching engine. The `telegram` channel SHALL
+resolve the recipient from the user's linked Telegram chat. The `email` channel
+SHALL resolve the recipient from the user's account email, read live at delivery
+time, so that no per-subscription address is stored and a changed account email
+takes effect on the next delivery. A subscription whose channel has no configured
+notifier SHALL be softly skipped (its matches stay pending, no attempt counted).
 
 #### Scenario: Telegram delivery without a stored destination
 
@@ -108,3 +124,14 @@ recipient from the user's linked Telegram chat.
 
 - **WHEN** a `telegram` subscription's user has no linked Telegram chat
 - **THEN** the delivery is softly skipped (matches stay pending, no attempt is counted) rather than dead-lettered
+
+#### Scenario: Email delivery resolves the account email
+
+- **WHEN** an `email` subscription is delivered
+- **THEN** the worker resolves the recipient from the user's current account email and routes the digest to the email notifier
+
+#### Scenario: Router dispatches by channel
+
+- **WHEN** a digest is delivered for a subscription
+- **THEN** the router sends it through the notifier registered for that subscription's channel, and a channel with no registered notifier is softly skipped
+
