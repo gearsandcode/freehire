@@ -174,10 +174,15 @@ describe('jobPostingJsonLd', () => {
   });
 
   it('emits identifier from external_id, and omits it when absent', () => {
-    const withId = jobPostingJsonLd(postingJob({ company: 'Acme', external_id: 'gh-42' }), ORIGIN);
-    expect(withId.identifier).toEqual({ '@type': 'PropertyValue', name: 'Acme', value: 'gh-42' });
+    const withId = jobPostingJsonLd(postingJob({ company: 'Acme', external_id: 'gh:42' }), ORIGIN);
+    expect(withId.identifier).toEqual({ '@type': 'PropertyValue', name: 'Acme', value: 'gh:42' });
 
     expect(jobPostingJsonLd(postingJob(), ORIGIN)).not.toHaveProperty('identifier');
+  });
+
+  it('drops the leading colon of a boardless external_id in the identifier', () => {
+    const ld = jobPostingJsonLd(postingJob({ external_id: ':https://x.dev/jobs/1' }), ORIGIN);
+    expect((ld.identifier as Record<string, unknown>).value).toBe('https://x.dev/jobs/1');
   });
 });
 

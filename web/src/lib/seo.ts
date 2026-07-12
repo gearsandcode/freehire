@@ -129,12 +129,14 @@ export function jobPostingJsonLd(job: Job, origin: string): Record<string, unkno
 
   // identifier is the hiring org's own posting id (Google-recommended): external_id
   // is the source's stable job id, so Google dedupes the vacancy across boards
-  // rather than reading us as a scraped copy.
+  // rather than reading us as a scraped copy. external_id is the namespaced dedup
+  // key "<board>:<id>" (sources.NamespaceExternalID); a boardless source yields a
+  // bare ":<id>", so drop a leading colon for a clean identifier value.
   if (job.external_id) {
     ld.identifier = {
       '@type': 'PropertyValue',
       name: job.company || 'Unknown',
-      value: job.external_id,
+      value: job.external_id.replace(/^:/, ''),
     };
   }
 
