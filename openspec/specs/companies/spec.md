@@ -90,6 +90,14 @@ remote-hiring regions (a subset of `regions`). The `yc_batch`, `yc_status`,
 none. Facet filters SHALL compose with the `q` name search. An absent facet
 parameter SHALL not constrain the list.
 
+The endpoint SHALL additionally accept the repeatable **scalar** facet parameter
+`maturity`, filtering against the company's single-valued `companies.maturity`
+column by **membership**: a company matches when its scalar value is among the
+requested values (OR within the facet), and this facet ANDs with the others and
+with `q` exactly like the array facets. A company whose `maturity` is `NULL`
+(unknown) matches no `maturity` filter. `maturity` values are `government`,
+`startup`, `scaleup`, `enterprise`.
+
 When any filter (`q` or a facet) is applied, the list `meta.total` SHALL report
 the count of companies matching the full filter combination, so pagination over
 the filtered results is correct.
@@ -147,6 +155,13 @@ the filtered results is correct.
   **and** whose `yc_flags` contains `top_company`, and `meta.total` is the count of
   such companies
 
+#### Scenario: Filtering by the scalar maturity facet
+
+- **WHEN** a client requests `GET /api/v1/companies?maturity=startup&maturity=scaleup`
+- **THEN** the response contains only companies whose `maturity` is `startup` **or**
+  `scaleup`, excluding any company whose `maturity` is `NULL`, and `meta.total` is
+  the count of such companies
+
 ### Requirement: Company job counts are denormalized and periodically recomputed
 
 The system SHALL store each company's count of open jobs (`closed_at IS NULL`) in
@@ -160,6 +175,19 @@ empty facet arrays. `remote_regions` SHALL be maintained as the distinct union o
 `regions` over the company's open jobs with `work_mode = 'remote'`, so it is a
 subset of the `regions` array; a company with no open remote job has an empty
 `remote_regions`.
+
+The same recompute SHALL additionally maintain one **deterministic, single-valued**
+classification column, `companies.maturity`, computed from signals already stored
+(`organization_type`, `yc_status`, `employee_count`, `year_founded`, and whether
+the company's open jobs come from an exclusively-government `source`). The
+derivation SHALL be a pure rule (no LLM), applied in precedence order: `maturity`
+is `government` when the company is government-sourced or `organization_type` is
+`Government`, else `startup` when it is a YC company or is small and recently
+founded, else `enterprise` when its employee count is large, else `scaleup` for
+mid-size, else `NULL` (unknown). Where signals are silent, the value SHALL be
+`NULL` — an honest abstain, never a fabricated label. This column SHALL be
+maintained under the same `IS DISTINCT FROM` change-guard as the other facets, so
+an unchanged company is not rewritten.
 
 #### Scenario: Recompute reflects only open jobs
 
@@ -193,6 +221,17 @@ subset of the `regions` array; a company with no open remote job has an empty
   `eu` and one `onsite` job in `north_america`
 - **THEN** that company's `remote_regions` is `{eu}` (the onsite job's region is
   excluded) while its `regions` is `{eu, north_america}`
+
+#### Scenario: maturity is derived deterministically
+
+- **WHEN** the recompute runs for a YC company with `employee_count = 20`
+- **THEN** its `maturity` is `startup`
+
+#### Scenario: Unknown maturity abstains to NULL
+
+- **WHEN** the recompute runs for a company with no government source, no YC
+  status, and no `employee_count`
+- **THEN** its `maturity` is `NULL` (unknown), not a guessed label
 
 ### Requirement: Company detail returns the company with its jobs
 
