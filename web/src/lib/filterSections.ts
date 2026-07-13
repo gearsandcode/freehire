@@ -119,6 +119,7 @@ export const RAIL: RailEntry[] = [
   // reachable via the seniority pill); the picker is the natural-language entry,
   // the pills/chips the browse-by-axis entry.
   { key: 'category', label: 'Role', section: 'ROLE', kind: 'category' },
+  { key: 'is_tech', label: 'Tech / Non-tech', section: 'ROLE', kind: 'facet', facetParam: 'is_tech' },
   { key: 'location', label: 'Location', section: 'ROLE', kind: 'location' },
   { key: 'work', label: 'Work & employment', section: 'ROLE', kind: 'work' },
   { key: 'skills', label: 'Skills', section: 'ROLE', kind: 'facet', facetParam: 'skills' },
