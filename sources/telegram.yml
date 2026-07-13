@@ -112,8 +112,6 @@ channels:
     kind: board
   - channel: gocareers
     kind: board
-  - channel: getjobss
-    kind: board
   - channel: jobs_and_internships_updates
     kind: board
   - channel: jobsandinternshipsupdates
