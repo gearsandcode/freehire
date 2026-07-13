@@ -39,7 +39,7 @@ const (
 	// embedderModel is the identity of the embedding model, stored beside a CV vector
 	// so a model change marks it stale (see CurrentEmbedderModel). Embedding runs on a
 	// self-hosted Text-Embeddings-Inference (TEI) service — NOT in-engine and NOT
-	// OpenAI — reached over TEI's OpenAI-compatible endpoint (embedderURL). Multilingual
+	// OpenAI — reached over TEI's native /embed route (embedderURL). Multilingual
 	// e5 gives far sharper skill matching than the old in-engine MiniLM, and offloading
 	// the compute keeps it off Meilisearch's single task queue.
 	embedderModel = "intfloat/multilingual-e5-base"
@@ -83,7 +83,7 @@ type Client struct {
 	semantic meilisearch.IndexManager
 	url      string
 	key      string
-	// embedURL is the TEI /v1/embeddings endpoint this client embeds against (jobs
+	// embedURL is the TEI native /embed endpoint this client embeds against (jobs
 	// and CVs alike). It defaults to embedderURL (the host2 TEI) but EMBED_URL can
 	// point a worker at a faster backend — e.g. a GPU endpoint for a bulk reindex —
 	// as long as it serves the SAME e5 model (same vector space). Tests set it directly.
@@ -540,9 +540,7 @@ func (c *Client) SimilarJobs(ctx context.Context, id int64, limit int) ([]JobDoc
 // returns the vector plus the embedder identity that produced it, so a CV vector is
 // directly comparable to the job corpus. The CV is the query side of e5's asymmetric
 // retrieval, so it carries the "query:" prefix (jobs carry "passage:", see jobPassage).
-// The key parameter is unused now that no scratch document is round-tripped through
-// Meilisearch; it is kept for interface compatibility.
-func (c *Client) EmbedText(ctx context.Context, _, text string) ([]float64, string, error) {
+func (c *Client) EmbedText(ctx context.Context, text string) ([]float64, string, error) {
 	vecs, err := c.embedBatch(ctx, []string{"query: " + text})
 	if err != nil {
 		return nil, "", err

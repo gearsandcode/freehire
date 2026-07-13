@@ -10,9 +10,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/strelov1/freehire/internal/db"
 	"github.com/strelov1/freehire/internal/enrich"
 	"github.com/strelov1/freehire/internal/jobderive"
 	"github.com/strelov1/freehire/internal/normalize"
+	"github.com/strelov1/freehire/internal/pgconv"
 )
 
 // ErrInvalidDraft is returned by New when a draft lacks the identity a job
@@ -155,27 +157,40 @@ func New(d Draft) (Job, error) {
 // fields alias the aggregate's; callers treat the result as read-only.
 func (j Job) Fields() Fields { return j.f }
 
+// UpsertParams maps the Fields-derived columns of a job to the generated UpsertJob
+// params, so every write path (ingest, telegram extraction) shares one mapping
+// instead of re-listing the columns. It covers only the fields carried on Fields;
+// columns a caller derives separately (ContentHash, RoleFingerprint, or a PostedAt
+// supplied outside the aggregate) are set on the returned struct after this call.
+// Enrichment columns are deliberately excluded — SetJobEnrichment owns those.
+func (f Fields) UpsertParams() db.UpsertJobParams {
+	return db.UpsertJobParams{
+		Source:      f.Source,
+		ExternalID:  f.ExternalID,
+		URL:         f.URL,
+		Title:       f.Title,
+		Company:     f.Company,
+		CompanySlug: f.CompanySlug,
+		PublicSlug:  f.PublicSlug,
+		Location:    f.Location,
+		Remote:      f.Remote,
+		Description: f.Description,
+		PostedAt:    pgconv.Timestamptz(f.PostedAt),
+		Countries:   f.Countries,
+		Regions:     f.Regions,
+		Cities:      f.Cities,
+		WorkMode:    f.WorkMode,
+		Skills:      f.Skills,
+		Seniority:   f.Seniority,
+		Category:    f.Category,
+
+		PostingLanguage:    f.PostingLanguage,
+		EmploymentType:     f.EmploymentType,
+		EducationLevel:     f.EducationLevel,
+		EnglishLevel:       f.EnglishLevel,
+		ExperienceYearsMin: pgconv.Int4(f.ExperienceYearsMin),
+	}
+}
+
 // IsOpen reports whether the job is live (not soft-closed).
 func (j Job) IsOpen() bool { return j.f.ClosedAt == nil }
-
-// Close soft-closes the job as of at, idempotently: an already-closed job keeps
-// its original closed_at. Closing is non-destructive — the public slug, facets,
-// and enrichment are untouched, so the posting reopens for free.
-func (j *Job) Close(at time.Time) {
-	if j.f.ClosedAt != nil {
-		return
-	}
-	j.f.ClosedAt = &at
-}
-
-// Reopen clears the closed state (e.g. a previously closed posting reappears in
-// its source feed), so the job serves on list/search surfaces again.
-func (j *Job) Reopen() { j.f.ClosedAt = nil }
-
-// ShouldEnrich reports whether the job is eligible for (re-)enrichment: it is open
-// and its stored enrichment is below the target schema version. This mirrors the
-// enrichment queue's `closed_at IS NULL AND enrichment_version < $target` guard;
-// the target is passed in so this package need not depend on internal/enrich.
-func (j Job) ShouldEnrich(targetVersion int32) bool {
-	return j.IsOpen() && j.f.EnrichmentVersion < targetVersion
-}
