@@ -79,3 +79,6 @@ __pycache__/
 /server
 /tg-extract
 /tg-ingest
+
+# Playwright temp
+/.playwright-mcp
