@@ -152,6 +152,9 @@ export interface User {
   // Authorization role ('user' | 'moderator' | 'admin'). A UI affordance only —
   // the server re-checks it on every privileged request.
   role: string;
+  // Beta-tester group membership, independent of `role`. Gates the agent
+  // assistant (/my/assistant) in the UI.
+  beta_tester: boolean;
   created_at: string | null;
 }
 
@@ -281,6 +284,23 @@ export interface ActivityPoint {
   period: string;
   added: number;
   removed: number;
+}
+
+/** One point on the member-growth series: the ISO date and the cumulative count of
+ *  registered members as of that day. The backend returns a dense, gap-free series
+ *  (days with no new signups repeat the running total), monotonically
+ *  non-decreasing. */
+export interface UserGrowthPoint {
+  date: string;
+  total: number;
+}
+
+/** Aggregate engagement counts across all users: jobs saved, applications marked,
+ *  and jobs viewed. Aggregate-only — no per-user or row-level field. */
+export interface EngagementStats {
+  saved: number;
+  applied: number;
+  viewed: number;
 }
 
 /** An API key as returned by the management endpoints — metadata only; the

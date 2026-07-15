@@ -42,6 +42,8 @@ import type {
   ResumeMeta,
   ActivityGranularity,
   ActivityPoint,
+  UserGrowthPoint,
+  EngagementStats,
   LocationPreferences,
 } from './types';
 
@@ -335,6 +337,20 @@ export function createApi(
     return requestData<ActivityPoint[]>(`/api/v1/stats/jobs-activity?${params}`);
   }
 
+  /** The public member-growth series: the cumulative count of registered members
+   *  per UTC day, from the first registration through today. Dense and
+   *  monotonically non-decreasing (gap days repeat the running total).
+   *  Aggregate-only — no user field is exposed. Unauthenticated. */
+  async function userGrowth(): Promise<UserGrowthPoint[]> {
+    return requestData<UserGrowthPoint[]>(`/api/v1/stats/user-growth`);
+  }
+
+  /** Aggregate engagement counts (jobs saved / applied / viewed across all users).
+   *  Aggregate-only, unauthenticated. */
+  async function engagementStats(): Promise<EngagementStats> {
+    return requestData<EngagementStats>(`/api/v1/stats/engagement`);
+  }
+
   /** List companies, optionally filtered by a name query `q` (a case-insensitive
    *  substring match; an empty `q` lists everything). `meta.total` reflects the
    *  filtered count, so the Paginator pages over the matches. */
@@ -362,6 +378,12 @@ export function createApi(
     return requestData<{ company: Company; jobs: Job[] }>(
       `/api/v1/companies/${slug}${query(limit, offset)}`,
     );
+  }
+
+  /** The subindustry facet vocabulary (each clean YC leaf + its company count),
+   *  count-ordered, backing the company "Industry" filter's searchable options. */
+  async function listCompanySubindustries(): Promise<{ value: string; count: number }[]> {
+    return requestData<{ value: string; count: number }[]>('/api/v1/companies/subindustries');
   }
 
   // --- Sitemap --------------------------------------------------------------
@@ -842,8 +864,11 @@ export function createApi(
     recommendations,
     facetCounts,
     jobsActivity,
+    userGrowth,
+    engagementStats,
     listCompanies,
     getCompany,
+    listCompanySubindustries,
     sitemapJobs,
     sitemapCompanies,
     sitemapCompanyBoundaries,

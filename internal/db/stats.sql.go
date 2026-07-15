@@ -24,6 +24,31 @@ func (q *Queries) DeleteAllJobDailyStats(ctx context.Context) error {
 	return err
 }
 
+const getEngagementStats = `-- name: GetEngagementStats :one
+SELECT
+    count(*) FILTER (WHERE saved_at IS NOT NULL)::int   AS saved,
+    count(*) FILTER (WHERE applied_at IS NOT NULL)::int AS applied,
+    count(*) FILTER (WHERE viewed_at IS NOT NULL)::int  AS viewed
+FROM user_jobs
+`
+
+type GetEngagementStatsRow struct {
+	Saved   int32 `json:"saved"`
+	Applied int32 `json:"applied"`
+	Viewed  int32 `json:"viewed"`
+}
+
+// Aggregate interaction counts from user_jobs — saved / applied / viewed — for the
+// public engagement endpoint. Aggregate-only: no user identifier or row-level field
+// is selected. viewed_at is NOT NULL on every row (set on RecordView), so "viewed"
+// equals the total interaction count.
+func (q *Queries) GetEngagementStats(ctx context.Context) (GetEngagementStatsRow, error) {
+	row := q.db.QueryRow(ctx, getEngagementStats)
+	var i GetEngagementStatsRow
+	err := row.Scan(&i.Saved, &i.Applied, &i.Viewed)
+	return i, err
+}
+
 const listJobActivity = `-- name: ListJobActivity :many
 SELECT
     date_trunc($1::text, d)::date AS period,
@@ -62,6 +87,57 @@ func (q *Queries) ListJobActivity(ctx context.Context, arg ListJobActivityParams
 	for rows.Next() {
 		var i ListJobActivityRow
 		if err := rows.Scan(&i.Period, &i.Added, &i.Removed); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserGrowth = `-- name: ListUserGrowth :many
+WITH daily AS (
+    SELECT (created_at AT TIME ZONE 'UTC')::date AS day, count(*) AS n
+    FROM users
+    GROUP BY 1
+)
+SELECT
+    d::date AS day,
+    sum(COALESCE(daily.n, 0)) OVER (ORDER BY d)::int AS total
+FROM generate_series(
+    (SELECT min(day) FROM daily),
+    (now() AT TIME ZONE 'UTC')::date,
+    interval '1 day'
+) AS d
+LEFT JOIN daily ON daily.day = d::date
+ORDER BY d
+`
+
+type ListUserGrowthRow struct {
+	Day   pgtype.Date `json:"day"`
+	Total int32       `json:"total"`
+}
+
+// Dense cumulative member-growth series: one UTC calendar day per row from the
+// first registration through today, each carrying the running total of members
+// registered on or before that day. A daily generate_series builds the gap-free
+// calendar (days with no new signups repeat the previous total), the LEFT JOIN
+// attaches each day's new-signup count, and the window SUM makes it cumulative, so
+// the series is monotonically non-decreasing. Aggregate only — no user identifier,
+// email, or other personal field is selected. With no members the series is empty
+// (min(day) is NULL, so generate_series yields no rows).
+func (q *Queries) ListUserGrowth(ctx context.Context) ([]ListUserGrowthRow, error) {
+	rows, err := q.db.Query(ctx, listUserGrowth)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUserGrowthRow{}
+	for rows.Next() {
+		var i ListUserGrowthRow
+		if err := rows.Scan(&i.Day, &i.Total); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

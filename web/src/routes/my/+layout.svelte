@@ -6,6 +6,7 @@
   import { resolve } from '$app/paths';
   import {
     User,
+    Bot,
     LayoutList,
     Activity,
     Bell,
@@ -42,15 +43,19 @@
     if (browser) localStorage.setItem('hire.myNavCollapsed', collapsed ? '1' : '0');
   }
 
-  // Moderator-only sections (Inbox) are hidden from the nav for everyone else; the
-  // server enforces the real 403, this just declutters the UI.
-  const navItems = $derived(visibleAccountNav(currentUser()?.role === 'moderator'));
+  // Moderator-only sections (Inbox) and beta-only sections (Agent) are hidden
+  // from the nav for everyone else; the relevant server surfaces enforce the
+  // real gate, this just declutters the UI.
+  const navItems = $derived(
+    visibleAccountNav(currentUser()?.role === 'moderator', currentUser()?.beta_tester ?? false),
+  );
 
   // Icon per section, kept out of the pure accountNav model so that stays
   // Svelte-free and unit-testable. Keyed by the nav hrefs so a new section
   // without an icon is a compile error, not a runtime `<undefined />`.
   const icons: Record<AccountNavItem['href'], LucideIcon> = {
     '/my/profile': User,
+    '/my/assistant': Bot,
     '/my/tracking': LayoutList,
     '/my/activity': Activity,
     '/my/inbox': Inbox,

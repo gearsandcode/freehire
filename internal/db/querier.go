@@ -114,6 +114,10 @@ type Querier interface {
 	// excluding the final row, so the sitemap index can list each company sub-sitemap's
 	// keyset cursor.
 	CompanySitemapBoundaries(ctx context.Context, chunkSize int64) ([]string, error)
+	// Distinct non-NULL subindustry values with their company counts, most common first
+	// (ties broken by value), serving the searchable option list for the subindustry facet.
+	// Counts are unconditional — they do not reflect other active list filters.
+	CompanySubindustries(ctx context.Context) ([]CompanySubindustriesRow, error)
 	// Total companies matching the same optional name + facet filters as ListCompanies,
 	// so search/filter pagination reports the filtered total. Keep this WHERE identical
 	// to ListCompanies.
@@ -267,6 +271,11 @@ type Querier interface {
 	// distinct row type and breaks the company-detail handler on every new column.
 	GetCompany(ctx context.Context, slug string) (Company, error)
 	GetEmail(ctx context.Context, arg GetEmailParams) (GetEmailRow, error)
+	// Aggregate interaction counts from user_jobs — saved / applied / viewed — for the
+	// public engagement endpoint. Aggregate-only: no user identifier or row-level field
+	// is selected. viewed_at is NOT NULL on every row (set on RecordView), so "viewed"
+	// equals the total interaction count.
+	GetEngagementStats(ctx context.Context) (GetEngagementStatsRow, error)
 	GetGmailConnection(ctx context.Context, userID int64) (GetGmailConnectionRow, error)
 	GetGmailRefreshToken(ctx context.Context, userID int64) (GetGmailRefreshTokenRow, error)
 	GetJob(ctx context.Context, id int64) (Job, error)
@@ -487,6 +496,15 @@ type Querier interface {
 	// Every board currently failing or cooled down, worst first — the operator's
 	// "what's broken" query and the source of the per-run summary log.
 	ListUnhealthyBoards(ctx context.Context) ([]ListUnhealthyBoardsRow, error)
+	// Dense cumulative member-growth series: one UTC calendar day per row from the
+	// first registration through today, each carrying the running total of members
+	// registered on or before that day. A daily generate_series builds the gap-free
+	// calendar (days with no new signups repeat the previous total), the LEFT JOIN
+	// attaches each day's new-signup count, and the window SUM makes it cumulative, so
+	// the series is monotonically non-decreasing. Aggregate only — no user identifier,
+	// email, or other personal field is selected. With no members the series is empty
+	// (min(day) is NULL, so generate_series yields no rows).
+	ListUserGrowth(ctx context.Context) ([]ListUserGrowthRow, error)
 	// Every job the caller has analyzed, newest first, joined to the job for display. Powers
 	// the Tracking → AI fit tab. Includes closed jobs (surfaced with a badge). The stored
 	// staleness stamps ride along so the handler can flag rows whose CV/job/model has since
