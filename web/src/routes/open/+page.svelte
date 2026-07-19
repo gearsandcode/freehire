@@ -14,7 +14,7 @@
   // on deploy), mirroring the homepage stat-strip. Recount on change:
   //   ATS platforms   → registered adapters in internal/sources/source.go `All()`
   //   Telegram channels → `- channel:` entries in sources/telegram.yml
-  const ATS_PLATFORMS = 137;
+  const ATS_PLATFORMS = 156;
   const TELEGRAM_CHANNELS = 91;
 
   const nf = new Intl.NumberFormat('en');

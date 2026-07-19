@@ -20,7 +20,7 @@
   const figures = $derived([
     { value: compact(stats.jobs, '3.1M+'), label: 'open jobs' },
     { value: compact(stats.companies, '220K+'), label: 'companies' },
-    { value: '137', label: 'ATS platforms' },
+    { value: '156', label: 'ATS platforms' },
     { value: '100%', label: 'open source' },
   ]);
 

@@ -20,7 +20,7 @@ const outPath = resolve(webRoot, 'static/og.png');
 const STATS = [
   { value: '3.1M+', label: 'open jobs' },
   { value: '220K+', label: 'companies' },
-  { value: '98', label: 'ATS platforms' },
+  { value: '156', label: 'ATS platforms' },
 ];
 
 async function main() {
