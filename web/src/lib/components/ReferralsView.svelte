@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page } from '$app/state';
+  import { replaceState } from '$app/navigation';
   import { FileText } from '@lucide/svelte';
   import { api, ApiError } from '$lib/api';
   import { AsyncData } from '$lib/asyncData.svelte';
-  import { currentUser } from '$lib/auth.svelte';
   import type {
     IncomingReferralRequest,
     ReferralOffer,
@@ -12,17 +13,30 @@
   } from '$lib/types';
   import { Button } from '$lib/ui';
   import { timeAgo } from '$lib/utils';
+  import CompanyLogo from './CompanyLogo.svelte';
   import CompanyPicker from './CompanyPicker.svelte';
   import States from './States.svelte';
 
   type Tab = 'requests' | 'offers' | 'incoming';
-  let tab = $state<Tab>('requests');
+  const tabs: Tab[] = ['requests', 'offers', 'incoming'];
+
+  // Open on the tab named in `?tab=` so deep-links land right — notably the
+  // "new referral request" ping, which links approved referrers to `?tab=incoming`.
+  function readTab(): Tab {
+    const t = page.url.searchParams.get('tab');
+    return tabs.includes(t as Tab) ? (t as Tab) : 'requests';
+  }
+  let tab = $state<Tab>(readTab());
+  function selectTab(next: Tab) {
+    if (next === tab) return;
+    tab = next;
+    // eslint-disable-next-line svelte/no-navigation-without-resolve -- in-place query write to the current pathname; there is no route to resolve
+    replaceState(`${page.url.pathname}?tab=${next}`, {});
+  }
 
   const requests = new AsyncData<SeekerReferralRequest[]>([]);
   const offers = new AsyncData<ReferralOffer[]>([]);
   const incoming = new AsyncData<IncomingReferralRequest[]>([]);
-
-  const isModerator = $derived(['moderator', 'admin'].includes(currentUser()?.role ?? ''));
 
   onMount(() => {
     void requests.run(() => api.listMyReferralRequests());
@@ -82,6 +96,24 @@
     }
   }
 
+  // Stop being a referrer: delete the offer after a confirm, then drop it optimistically
+  // (reloading on failure to resurface it). `withdrawing` disables the acting row's button.
+  let withdrawing = $state<number | null>(null);
+  async function withdrawOffer(o: ReferralOffer) {
+    if (withdrawing !== null) return;
+    const name = o.company_name || o.company_slug;
+    if (!confirm(`Stop being a referrer for ${name}? You can offer again later.`)) return;
+    withdrawing = o.id;
+    try {
+      await api.withdrawReferralOffer(o.id);
+      offers.value = offers.value.filter((x) => x.id !== o.id);
+    } catch {
+      await offers.run(() => api.listMyReferralOffers());
+    } finally {
+      withdrawing = null;
+    }
+  }
+
   // ── Incoming: mark contacted / declined ─────────────────────────────────
   async function resolve(req: IncomingReferralRequest, status: 'contacted' | 'declined') {
     try {
@@ -102,7 +134,7 @@
         type="button"
         role="tab"
         aria-selected={tab === id}
-        onclick={() => (tab = id as Tab)}
+        onclick={() => selectTab(id as Tab)}
         class={[
           '-mb-px border-b-2 px-3 py-2.5 text-sm font-semibold',
           tab === id ? 'border-brand text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -117,10 +149,6 @@
       </button>
     {/each}
   </div>
-  {#if isModerator}
-    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- query-bearing link to a static route; resolve() can't carry the ?tab param -->
-    <a href="/moderation?tab=referrals" class="text-sm font-medium text-brand-strong hover:underline">Review offers →</a>
-  {/if}
 </div>
 
 <!-- ── My requests ── -->
@@ -202,11 +230,21 @@
   {:else}
     <ul class="mt-3">
       {#each offers.value as o (o.id)}
-        <li class="flex items-center justify-between border-t border-border py-3 text-sm">
-          <span class="font-medium">{o.company_slug}</span>
+        <li class="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border py-3 text-sm">
+          <CompanyLogo name={o.company_name || o.company_slug} size="size-6" />
+          <span class="min-w-0 truncate font-medium">{o.company_name || o.company_slug}</span>
           <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold {offerPill[o.status] ?? 'bg-muted text-muted-foreground'}">
             {o.status}
           </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="ml-auto text-muted-foreground hover:text-destructive"
+            disabled={withdrawing === o.id}
+            onclick={() => withdrawOffer(o)}
+          >
+            {withdrawing === o.id ? 'Removing…' : 'Stop referring'}
+          </Button>
         </li>
       {/each}
     </ul>
