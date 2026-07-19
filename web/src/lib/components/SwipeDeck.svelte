@@ -354,7 +354,7 @@
   {#if current}
     <!-- Card stage: the card fills the available height, Tinder-style. -->
     <main class="relative min-h-0 flex-1 px-4 py-3">
-      <div class="relative mx-auto h-full w-full max-w-md select-none">
+      <div class="relative mx-auto h-full w-full max-w-md select-none md:max-w-2xl">
         {#if next}
           <div
             class="absolute inset-0 scale-95 rounded-3xl border border-border bg-card opacity-60"
@@ -410,7 +410,14 @@
                 </div>
               </div>
 
-              <h2 class="line-clamp-3 text-2xl font-bold tracking-tight">{current.title}</h2>
+              <!-- The wrapper is load-bearing. line-clamp sets display:-webkit-box, and a
+                   -webkit-box collapses to height 0 when it's a direct child of this flex
+                   column (a legacy box reports no intrinsic block size to the modern flex
+                   parent, so the title vanishes). Nesting it in a plain block restores
+                   normal sizing while keeping the 3-line clamp. -->
+              <div>
+                <h2 class="line-clamp-3 text-2xl font-bold tracking-tight">{current.title}</h2>
+              </div>
 
               {#if salary}
                 <div class="text-lg font-bold tracking-tight text-brand-strong">
