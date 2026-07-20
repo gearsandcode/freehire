@@ -9,7 +9,7 @@
 
 ### Every IT job, straight from the source.
 
-**3M+ live postings pulled directly from company career pages — no recruiters, no reposts, no dead links. Fully open source.**
+**3.4M+ live postings pulled directly from company career pages — no recruiters, no reposts, no dead links. Fully open source.**
 
 [**Try it live →**](https://freehire.dev) · [Sources](#sources) · [API](#api) · [Add a source](#adding-a-source) · [Contributing](CONTRIBUTING.md)
 
@@ -21,7 +21,7 @@
 
 <br>
 
-<img src="docs/assets/screenshot.png" alt="freehire — the job feed with faceted filters for region, work format, specialization and seniority" width="860">
+<img src="docs/assets/freehire.gif" alt="freehire — faceted search narrowing 3.4M+ live postings by region, work format, specialization and seniority, each linking straight to the company's own careers page" width="860">
 
 </div>
 
@@ -41,7 +41,7 @@
 - **Yours to build on.** A clean HTTP API, a CLI, Telegram digests, and per-user
   application tracking — use the hosted site, run your own, or build on top.
 
-Aggregating **3M+ live postings** from **115,000+ companies** across **55+ ATS
+Aggregating **3.4M+ live postings** from **185,000+ companies** across **75+ ATS
 platforms** and a long tail of aggregators and direct feeds — see
 [Sources](#sources) for the full breakdown.
 
@@ -169,8 +169,8 @@ Auth legend: **✓** session cookie or API key · **🍪** session cookie only.
 
 ## Sources
 
-Live catalogue snapshot — **3,014,475 open postings** across **119,822
-companies** (4,640,025 total incl. closed). Counts are open postings unless
+Live catalogue snapshot — **3,407,508 open postings** across **187,542
+companies** (5,825,773 total incl. closed). Counts are open postings unless
 noted. Every source is one of three kinds:
 
 - **ATS platforms** — one adapter per multi-tenant applicant-tracking system,
@@ -182,135 +182,178 @@ noted. Every source is one of three kinds:
 
 ### ATS platforms
 
-**58 platforms · 76,768 companies · 2,745,916 open postings.**
+**78 platforms · 80,370 companies · 2,901,510 open postings.**
 
 | Source | Companies | Open jobs |
 | --- | ---: | ---: |
-| oracle | 526 | 388,623 |
-| workday | 4,043 | 378,190 |
-| smartrecruiters | 2,712 | 315,060 |
-| greenhouse | 6,767 | 202,938 |
-| ukg | 1 | 191,410 |
-| icims | 3,766 | 165,556 |
-| paycom | 5,906 | 135,880 |
-| jibe | 13 | 112,388 |
-| apploi | 2,957 | 96,540 |
-| gupy | 1,427 | 78,310 |
-| lever | 2,112 | 71,928 |
-| bamboohr | 9,055 | 64,423 |
-| ashby | 3,563 | 58,268 |
-| jazzhr | 3,775 | 53,764 |
-| phenom | 46 | 51,194 |
-| recruitee | 1,735 | 41,270 |
-| personio | 3,989 | 37,746 |
-| paylocity | 2,536 | 32,485 |
-| hireology | 2,475 | 29,588 |
-| applicantpro | 1,923 | 21,044 |
-| isolvedhire | 2,162 | 20,316 |
-| zohorecruit | 1,064 | 18,921 |
-| teamtailor | 1,161 | 18,383 |
-| careerplug | 4,749 | 18,079 |
-| pinpoint | 608 | 18,077 |
-| eightfold | 37 | 16,567 |
-| workable | 550 | 15,846 |
-| solides | 1,132 | 15,681 |
-| breezy | 780 | 14,558 |
-| join | 4,004 | 11,921 |
-| inhire | 350 | 8,229 |
-| taleo | 13 | 8,200 |
-| trakstar | 508 | 7,093 |
-| freshteam | 147 | 4,732 |
-| factorial | 460 | 4,644 |
-| senior | 80 | 2,677 |
-| erecruiter | 30 | 2,609 |
-| gem | 217 | 2,596 |
-| cornerstone | 13 | 1,893 |
-| radancy | 5 | 1,552 |
-| neogov | 11 | 1,367 |
-| successfactors | 4 | 875 |
-| rippling | 75 | 758 |
-| loxo | 12 | 706 |
-| deel | 58 | 600 |
-| comeet | 17 | 400 |
-| traffit | 14 | 396 |
-| wpyoast | 1 | 391 |
-| clinch | 1 | 382 |
-| avature | 1 | 363 |
-| ashbygraphql | 3 | 129 |
-| huntflow | 18 | 107 |
-| pageup | 2 | 102 |
-| careerspage | 1 | 48 |
-| earcu | 1 | 43 |
+| workday | 4,047 | 831,217 |
+| oracle | 526 | 291,963 |
+| smartrecruiters | 2,748 | 257,443 |
+| ukg | 1 | 206,768 |
+| greenhouse | 6,782 | 178,084 |
+| icims | 3,842 | 122,532 |
+| paycom | 5,908 | 109,503 |
+| jibe | 13 | 94,291 |
+| apploi | 2,957 | 88,710 |
+| gupy | 1,428 | 69,088 |
+| bamboohr | 9,096 | 61,956 |
+| lever | 2,126 | 56,453 |
+| ashby | 3,580 | 55,136 |
+| jazzhr | 3,789 | 46,179 |
+| recruitee | 1,796 | 38,917 |
+| phenom | 47 | 38,107 |
+| personio | 3,992 | 36,097 |
+| paylocity | 2,663 | 34,067 |
+| hireology | 2,474 | 27,095 |
+| applicantpro | 1,931 | 24,140 |
+| eightfold | 41 | 21,098 |
+| teamtailor | 1,354 | 19,868 |
+| careerplug | 5,464 | 18,079 |
+| isolvedhire | 2,166 | 18,063 |
+| workable | 681 | 18,013 |
+| zohorecruit | 1,066 | 17,734 |
+| pinpoint | 660 | 14,994 |
+| solides | 1,134 | 14,931 |
+| breezy | 842 | 13,791 |
+| join | 4,014 | 10,088 |
+| jobylon | 841 | 8,367 |
+| inhire | 363 | 8,078 |
+| taleo | 13 | 7,623 |
+| trakstar | 510 | 7,097 |
+| freshteam | 147 | 4,761 |
+| factorial | 460 | 4,484 |
+| successfactors | 9 | 3,258 |
+| erecruiter | 30 | 2,560 |
+| gem | 217 | 2,456 |
+| senior | 81 | 2,448 |
+| traffit | 44 | 2,002 |
+| cornerstone | 14 | 1,951 |
+| jobvite | 54 | 1,766 |
+| neogov | 11 | 1,497 |
+| radancy | 5 | 1,445 |
+| rippling | 77 | 1,158 |
+| manatal | 13 | 1,032 |
+| avature | 2 | 791 |
+| loxo | 12 | 704 |
+| peopleforce | 53 | 629 |
+| deel | 58 | 541 |
+| wpyoast | 1 | 402 |
+| comeet | 17 | 389 |
+| clinch | 1 | 387 |
+| crelate | 55 | 154 |
+| catsone | 4 | 149 |
+| ashbygraphql | 3 | 125 |
+| huntflow | 19 | 114 |
+| ismartrecruit | 2 | 108 |
+| pageup | 2 | 107 |
+| jobscore | 6 | 89 |
+| cleverstaff | 32 | 78 |
+| bullhorn | 2 | 70 |
+| careerspage | 3 | 43 |
+| hurma | 5 | 42 |
 | recruitingsolutions | 17 | 40 |
+| earcu | 1 | 36 |
+| quickin | 3 | 33 |
+| talentlyft | 3 | 19 |
 | adp | 1 | 19 |
+| mindsight | 1 | 13 |
 | vouch | 1 | 11 |
+| odoo | 1 | 11 |
+| enlizt | 1 | 5 |
+| weblink | 4 | 4 |
+| spark | 1 | 4 |
+| talentadore | 1 | 3 |
+| briefhq | 1 | 2 |
 
 ### Aggregators & job boards
 
-**27 sources · 47,355 companies · 234,947 open postings.**
+**44 sources · 115,253 companies · 479,504 open postings.**
 
 | Source | Companies | Open jobs |
 | --- | ---: | ---: |
-| mycareersfuture | 17,849 | 91,840 |
-| gulftalent | 807 | 23,667 |
-| jobtech | 4,509 | 21,636 |
-| himalayas | 7,713 | 15,955 |
-| jobdanmark | 4,773 | 15,188 |
-| jobnet | 4,652 | 11,516 |
-| usajobs | 330 | 11,029 |
-| justjoin | 997 | 10,983 |
-| telegram | 2,527 | 6,642 |
-| reed | 833 | 5,587 |
-| wantedkr | 1,742 | 5,333 |
-| workatastartup | 1,383 | 5,058 |
-| jobstash | 529 | 3,489 |
-| arbeitnow | 1,031 | 1,765 |
-| habr_career | 205 | 1,155 |
-| thehub | 264 | 1,101 |
-| getonbrd | 257 | 1,052 |
-| getmatch | 119 | 749 |
-| jobicy | 249 | 407 |
-| remoteok | 288 | 342 |
-| geekjob | 113 | 161 |
-| weworkremotely | 120 | 138 |
-| tecla | 29 | 51 |
-| remotive | 20 | 44 |
-| workingnomads | 15 | 41 |
-| topco | 4 | 10 |
+| trudvsem | 37,381 | 213,394 |
+| mycareersfuture | 19,791 | 70,428 |
+| jobtech | 6,035 | 24,228 |
+| gulftalent | 798 | 19,283 |
+| himalayas | 8,418 | 17,965 |
+| infojobs | 11,343 | 17,371 |
+| jobnet | 5,325 | 11,946 |
+| usajobs | 350 | 10,469 |
+| tyomarkkinatori | 2,836 | 10,441 |
+| jobdanmark | 3,453 | 9,885 |
+| reed | 1,376 | 8,702 |
+| justjoin | 1,040 | 8,644 |
+| nofluffjobs | 334 | 8,435 |
+| telegram | 2,871 | 7,795 |
+| hh | 2,992 | 6,548 |
+| djinni | 1,826 | 5,981 |
+| wantedkr | 2,040 | 5,549 |
+| jobstash | 634 | 4,166 |
+| workatastartup | 1,310 | 4,020 |
+| arbeitsagentur | 873 | 2,376 |
+| vagas | 391 | 1,923 |
+| arbeitnow | 1,299 | 1,883 |
+| likeit | 16 | 1,254 |
+| getonbrd | 279 | 1,066 |
+| habr_career | 179 | 1,049 |
+| functionalworks | 335 | 886 |
+| thehub | 270 | 838 |
+| getmatch | 128 | 701 |
+| remoteok | 454 | 537 |
+| getro | 112 | 419 |
+| jobicy | 214 | 296 |
+| geekjob | 158 | 246 |
+| weworkremotely | 150 | 177 |
+| wantapply | 54 | 159 |
+| workablemarketplace | 2 | 140 |
+| startupandvc | 74 | 100 |
+| tecla | 31 | 53 |
+| remotive | 21 | 42 |
+| workingnomads | 16 | 39 |
+| getmanfred | 26 | 34 |
+| jobspresso | 13 | 20 |
+| topco | 4 | 8 |
 | teamex | 1 | 8 |
+| 4dayweek | 0 | 0 |
 
 ### Company career sites
 
-**28 feeds · 56 companies · 33,606 open postings.**
+**34 feeds · 64 companies · 26,488 open postings.**
 
 | Source | Companies | Open jobs |
 | --- | ---: | ---: |
-| amazon | 1 | 10,287 |
-| apple | 1 | 4,861 |
-| google | 7 | 3,506 |
-| sber | 10 | 2,641 |
-| mts | 12 | 2,447 |
-| alfabank | 1 | 2,341 |
-| tbank | 1 | 1,997 |
-| luxoft | 1 | 1,389 |
+| amazon | 1 | 8,039 |
+| apple | 1 | 4,282 |
+| google | 7 | 3,484 |
+| alfabank | 1 | 2,133 |
+| sber | 10 | 1,801 |
+| mts | 12 | 1,217 |
+| epam | 1 | 978 |
 | yandex | 1 | 859 |
-| epam | 1 | 681 |
-| meta | 1 | 630 |
-| uber | 1 | 604 |
-| rwb | 1 | 388 |
-| vk | 1 | 280 |
-| avito | 1 | 164 |
-| lamoda | 1 | 147 |
-| dataart | 1 | 144 |
+| luxoft | 1 | 739 |
+| uber | 1 | 562 |
+| tbank | 1 | 456 |
+| rwb | 1 | 396 |
+| micro1 | 1 | 289 |
+| vk | 1 | 279 |
+| bairesdev | 1 | 171 |
+| avito | 1 | 148 |
+| lamoda | 1 | 134 |
+| dataart | 1 | 133 |
+| alignerr | 1 | 59 |
 | globalpayments | 1 | 58 |
-| vention | 1 | 37 |
-| aviasales | 1 | 33 |
-| domclick | 1 | 24 |
-| rapyd | 1 | 22 |
-| ozon | 1 | 20 |
-| lumenalta | 1 | 17 |
-| dodo | 3 | 11 |
-| mtslink | 1 | 10 |
+| meta | 1 | 43 |
+| vention | 1 | 32 |
+| aviasales | 1 | 30 |
+| northstone | 3 | 27 |
+| domclick | 1 | 27 |
+| rapyd | 1 | 23 |
+| ozon | 1 | 21 |
+| 2gis | 1 | 15 |
+| lumenalta | 1 | 15 |
+| dodo | 3 | 12 |
+| onstrider | 1 | 11 |
+| mtslink | 1 | 7 |
 | telegramcareers | 1 | 6 |
 | kuper | 1 | 2 |
 
