@@ -352,6 +352,7 @@ type ReferralOffer struct {
 	DecidedBy      pgtype.Int8        `json:"decided_by"`
 	DecidedAt      pgtype.Timestamptz `json:"decided_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	LinkedinUrl    string             `json:"linkedin_url"`
 }
 
 type ReferralRequest struct {
@@ -368,6 +369,7 @@ type ReferralRequest struct {
 	ActedBy         pgtype.Int8        `json:"acted_by"`
 	ActedAt         pgtype.Timestamptz `json:"acted_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	LinkedinUrl     string             `json:"linkedin_url"`
 }
 
 type ReminderSetting struct {
