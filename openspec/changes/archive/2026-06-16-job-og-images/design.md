@@ -2,10 +2,9 @@
 
 Job detail pages are SSR'd SvelteKit routes (`web/`, adapter-node behind nginx).
 `Seo.svelte` emits per-route `<head>` metadata but no `og:image`; the Twitter
-card is `summary`. The full visual design — direction "A Editorial", light,
-1200×630 — and the degradation rules were brainstormed and recorded in
-`docs/superpowers/specs/2026-06-16-job-og-images-design.md`. This document is the
-technical companion: it records the architectural choices, not the pixel layout.
+card is `summary`. This document is the technical companion: it records the
+architectural choices (the full 1200×630 "A Editorial" visual design and the
+degradation rules were brainstormed separately), not the pixel layout.
 
 The served `Job` wire contract already carries everything the card needs
 (`title`, `company`, `work_mode`, `skills`, `enrichment.seniority`, salary

@@ -6,8 +6,7 @@ optional `src`, and an optional `q`, ordered `received_at DESC`. `read` is
 derived (`read_at IS NOT NULL`), not a stored boolean; `status_signal` holds the
 mailclassify label. The frontend `InboxView.svelte` toolbar is `[account
 switcher] [search] [Refresh]` and already carries an optimistic Undo pattern for
-unlink. Full brainstormed spec:
-`docs/superpowers/specs/2026-07-15-inbox-read-side-enhancements-design.md`.
+unlink.
 
 ## Goals / Non-Goals
 

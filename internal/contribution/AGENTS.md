@@ -3,7 +3,7 @@
 ## Scope
 The crowdsourced "contribute a board" flow: a signed-in user pastes a job link from a
 supported multi-tenant ATS, and a company board we do not yet crawl is recorded and rewarded
-with a point. Distinct from `internal/submission` (the manual full-card moderation queue) —
+with AI credits. Distinct from `internal/submission` (the manual full-card moderation queue) —
 contributions are URL-only, auto-validated, unmoderated.
 
 ## Always true
@@ -31,10 +31,13 @@ contributions are URL-only, auto-validated, unmoderated.
   prefixed by `<board>:`, via `starts_with`) before any write; the record+point transaction
   last, where a duplicate board (the `UNIQUE (source, board)` on `link_contributions`) surfaces
   as `ErrBoardAlreadyContributed` (409).
-- **Record + point are one transaction** (`QueriesRepository.Record`, the `accounts` repo
-  pattern), so a rolled-back insert — including the concurrent-duplicate race — credits no
-  point. Verified by the build-tagged integration test.
-- **Points live on `users.points`**, surfaced on `/auth/me`.
+- **`Record` is a single insert** (`QueriesRepository.Record`, the `accounts` repo pattern): it
+  persists the contribution row and maps the `UNIQUE (source, board)` violation — including the
+  concurrent-duplicate race — to `ErrBoardAlreadyContributed`. Verified by the build-tagged
+  integration test.
+- **The reward is AI credits, granted separately by the handler** (keyed by the contribution id,
+  not inside `Record`). The legacy `users.points` counter was dropped in migration
+  `0034_drop_users_points.sql`; the credit balance is the unified per-user reward now.
 
 ## Entry points (same `Service.Submit`, two front doors)
 - **Website:** `POST /api/v1/me/contributions` (`RequireAuthOrKey`), body `{url}`; 201 with the
@@ -46,8 +49,8 @@ contributions are URL-only, auto-validated, unmoderated.
   with no link is ignored; a link from an unlinked chat prompts the user to link first.
 
 ## Limitations
-- Points are awarded before the board is verified to fetch (no network on submit). Onboarding
-  the board into `sources` and any point claw-back for an unreachable board are deferred to a
+- Credits are awarded before the board is verified to fetch (no network on submit). Onboarding
+  the board into `sources` and any claw-back for an unreachable board are deferred to a
   background ingest worker; the `status` column keeps that option open.
 - Coverage is the 4 path-based multi-tenant ATS. Subdomain-based and the long tail are a
   follow-up (one `atsBoards`-style rule + test each).

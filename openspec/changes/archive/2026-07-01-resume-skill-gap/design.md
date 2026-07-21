@@ -1,7 +1,6 @@
 ## Context
 
-Full approved design at `docs/superpowers/specs/2026-07-01-resume-skill-gap-profiles-design.md`.
-This mirrors the key decisions for OpenSpec tracking.
+This document mirrors the key decisions for OpenSpec tracking.
 
 The codebase already has the pieces: `internal/skilltag.Parse` (deterministic dictionary →
 canonical skill slugs, same slugs as `jobs.skills` and the search facet), the `search_profiles`

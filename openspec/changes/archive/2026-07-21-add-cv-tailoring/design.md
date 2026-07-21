@@ -1,7 +1,6 @@
 ## Context
 
-The full brainstormed design lives at `docs/superpowers/specs/2026-07-17-cv-tailoring-design.md`
-(local-only per repo convention). This document captures the OpenSpec-level decisions for the
+This document captures the OpenSpec-level decisions for the
 **freehire-repo portion** only.
 
 Current state the change builds on:

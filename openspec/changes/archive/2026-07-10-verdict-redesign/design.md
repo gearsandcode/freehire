@@ -16,9 +16,6 @@ Constraints from the codebase:
 - No DB migration is wanted: reuse the stored CV text and the existing
   `users.resume_ats_analysis` cache column.
 
-The full brainstormed design lives at
-`docs/superpowers/specs/2026-07-03-verdict-redesign-design.md`.
-
 ## Goals / Non-Goals
 
 **Goals:**

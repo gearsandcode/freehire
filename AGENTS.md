@@ -119,6 +119,7 @@ For the full architecture and conventions, see the **module files** below. Each 
 | **Source ingest** (board files, provider registry, validation, USAJobs) | [internal/sources/AGENTS.md](internal/sources/AGENTS.md) |
 | **Pipeline** (Runner, dedup, UpsertJob, board health, search indexing) | [internal/pipeline/AGENTS.md](internal/pipeline/AGENTS.md) |
 | **Link resolution** (outbound job URL → destination's own identity) | [internal/linksource/AGENTS.md](internal/linksource/AGENTS.md) |
+| **Board contributions** (crowdsourced URL → (source, board) onboarding) | [internal/contribution/AGENTS.md](internal/contribution/AGENTS.md) |
 
 ### AI enrichment
 

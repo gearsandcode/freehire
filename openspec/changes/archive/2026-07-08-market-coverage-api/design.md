@@ -8,8 +8,6 @@ an `Input` (three facet-query results + declared/body/all skill sets) and return
 the scored `Verdict`. An agent driving `freehire-cli` has only a flat skill list
 and an API key — it needs a stateless entry into the same computation.
 
-(Full design narrative: `docs/superpowers/specs/2026-07-08-market-coverage-api-design.md`.)
-
 ## Goals / Non-Goals
 
 **Goals:**

@@ -15,8 +15,6 @@ paginator always calls `api.searchJobs()` (`/jobs/search`, keyword-only,
 `semantic_ratio=0`). The feed has no sort UI; `SortField` in `facetModel.ts` is the
 single value `'posted_at'`, and `filtersFromParams` never reads `sort` back.
 
-Full agreed design: `docs/superpowers/specs/2026-07-11-cv-sort-on-jobs-feed-design.md`.
-
 ## Goals / Non-Goals
 
 **Goals:**

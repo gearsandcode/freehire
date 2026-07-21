@@ -7,9 +7,7 @@ tab. Tracking today carries four sub-tabs — Board, Pipeline, History, Matches 
 the active application pipeline with read-back views. The kanban column is a *view*
 over `saved_at`/`applied_at`/`stage` (`lib/board.ts::columnOf`), not a stored field.
 
-The full narrative design lives at
-`docs/superpowers/specs/2026-07-12-tracking-activity-reorg-design.md`; this document
-records the decisions that matter for implementation.
+This document records the decisions that matter for implementation.
 
 ## Goals / Non-Goals
 

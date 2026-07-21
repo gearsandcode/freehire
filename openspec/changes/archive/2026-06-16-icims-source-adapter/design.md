@@ -1,8 +1,6 @@
 ## Context
 
-The full investigation and approved technical design live at
-`docs/superpowers/specs/2026-06-16-icims-source-adapter-design.md`; this document
-summarizes the decisions for OpenSpec tracking. iCIMS career sites at
+This document summarizes the decisions for OpenSpec tracking. iCIMS career sites at
 `https://careers-{slug}.icims.com` expose a flat `sitemap.xml` of
 `/jobs/{id}/.../job` URLs; the canonical job page is a SPA/WordPress wrapper, but
 its embedded `<iframe src=".../job?in_iframe=1">` fragment is server-rendered and

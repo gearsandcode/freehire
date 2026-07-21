@@ -8,9 +8,7 @@ LOCKED`. There is no outbound Telegram code today (`internal/telegram` only
 crawls). Production is a ~390k-job aggregator, so matching must not scale with job
 or subscriber counts.
 
-The full brainstorming write-up lives at
-`docs/superpowers/specs/2026-06-16-filter-subscriptions-notifications-design.md`;
-this document is the OpenSpec-scoped distillation.
+This document is the OpenSpec-scoped distillation.
 
 ## Goals / Non-Goals
 

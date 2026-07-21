@@ -8,9 +8,6 @@ companies, boards, marketing pages) shares links with no image. The reusable
 brand primitives (mark, escaping, monogram, logo/footer markup) currently live
 inside `card.ts`.
 
-Full brainstormed design (gitignored, for reference):
-`docs/superpowers/specs/2026-07-04-og-brand-and-company-cards-design.md`.
-
 ## Goals / Non-Goals
 
 **Goals:**

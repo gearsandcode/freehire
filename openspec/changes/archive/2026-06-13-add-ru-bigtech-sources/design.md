@@ -9,9 +9,7 @@ public, unauthenticated JSON APIs, live-verified on 2026-06-13 with our exact in
 client header (`User-Agent: freehire/0.1 (+https://freehire.dev)` + `Accept:
 application/json`).
 
-The full per-adapter endpoint/field reference lives in
-`docs/superpowers/specs/2026-06-13-ru-bigtech-sources-design.md` (live-verified). This
-document records the architectural decisions; the spec delta records the requirements.
+This document records the architectural decisions; the spec delta records the requirements.
 
 Constraints carried from the codebase: sqlc is the only DB layer and this change adds no
 schema (every adapter reuses `UpsertJob`); the shared `HTTPClient` is the single

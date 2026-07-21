@@ -6,8 +6,7 @@ rendered by `routes/collections/[slug]/+page.svelte`). The route, the
 `excludeFacets = Object.keys(params)` facet-hiding, the self-canonical + breadcrumb
 JSON-LD, and the `collectionPaths()` sitemap inclusion all exist. Only two axes are
 covered (remote regions, languages/frameworks). The `job-collections` spec is stale
-about landing pages (see the spec delta). Full approved design:
-`docs/superpowers/specs/2026-07-08-facet-landings-curated-axes-design.md`.
+about landing pages (see the spec delta).
 
 ## Goals / Non-Goals
 

@@ -2,9 +2,9 @@
 // pastes a job link from a supported multi-tenant ATS — a vacancy URL or a bare board-listing
 // URL — and, without any network fetch, the service derives the company board (source, board)
 // from the URL alone, rejects a board we already crawl or someone already contributed, and
-// otherwise records the board and awards the submitter one point. The ingest side later
-// onboards the board and scrapes all its vacancies, so the unit of a contribution is the
-// board, not a single vacancy; this package records and rewards.
+// otherwise records the board (the handler then awards the submitter AI credits). The ingest
+// side later onboards the board and scrapes all its vacancies, so the unit of a contribution is
+// the board, not a single vacancy; this package records, and the handler rewards.
 package contribution
 
 import (
@@ -21,7 +21,7 @@ var (
 	// single-tenant source, an unknown host, or a URL with no board segment (mapped to 422).
 	ErrUnsupportedATS = errors.New("contribution: unsupported ATS board link")
 	// ErrBoardAlreadyTracked is a board the catalogue already crawls (a job exists for it) —
-	// contributing it adds nothing, so no point (409).
+	// contributing it adds nothing, so no reward (409).
 	ErrBoardAlreadyTracked = errors.New("contribution: board already in catalogue")
 	// ErrBoardAlreadyContributed is a board already recorded by any user — the repository maps
 	// the unique violation to this (409).
@@ -40,8 +40,7 @@ type Contribution struct {
 	CreatedAt   *time.Time
 }
 
-// RecordInput is the validated, deduped board the service asks the repository to persist
-// (with the point award) in one transaction.
+// RecordInput is the validated, deduped board the service asks the repository to persist.
 type RecordInput struct {
 	SubmittedBy int64
 	URL         string
@@ -50,8 +49,7 @@ type RecordInput struct {
 }
 
 // Repository is the persistence contract, expressed in package domain types. Record inserts
-// the contribution and increments the submitter's points atomically, mapping a duplicate
-// board to ErrBoardAlreadyContributed.
+// the contribution, mapping a duplicate board to ErrBoardAlreadyContributed.
 type Repository interface {
 	BoardTracked(ctx context.Context, source, board string) (bool, error)
 	CompanyForBoard(ctx context.Context, source, board string) (name, slug string, ok bool, err error)
@@ -82,10 +80,10 @@ func New(repo Repository, resolver Resolver) *Service {
 	return &Service{repo: repo, resolver: resolver}
 }
 
-// Submit validates and records a contributed board, awarding the submitter a point for a novel
-// one. The checks run cheapest-first: unsupported ATS (422) before any DB read;
-// already-tracked (409) before any write; the record+point transaction last, where a
-// duplicate-board race surfaces as ErrBoardAlreadyContributed (409).
+// Submit validates and records a contributed board so the handler can reward a novel one. The
+// checks run cheapest-first: unsupported ATS (422) before any DB read; already-tracked (409)
+// before any write; the record insert last, where a duplicate-board race surfaces as
+// ErrBoardAlreadyContributed (409).
 func (s *Service) Submit(ctx context.Context, submittedBy int64, rawURL string) (rec Contribution, source, board string, err error) {
 	source, board, canonical, ok := s.resolveBoard(ctx, rawURL)
 	if !ok {

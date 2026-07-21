@@ -1,8 +1,6 @@
 # Tasks
 
-Endpoint/field reference for every adapter:
-`docs/superpowers/specs/2026-06-13-ru-bigtech-sources-design.md` (live-verified
-2026-06-13). Each adapter follows the same shape as the existing detail-fetching
+Each adapter follows the same shape as the existing detail-fetching
 adapters; tests use a fake `HTTPClient` over canned JSON — no network in unit tests.
 
 ## 1. Infra — boardless config (TDD)

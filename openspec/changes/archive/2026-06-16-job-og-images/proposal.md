@@ -7,9 +7,6 @@ search snippets. A per-job preview image (the idea behind hirify's
 `api.hirify.me/og-media/<id>.jpg`, but in the freehire brand and data) makes
 shared links legible and on-brand.
 
-The full design is in `docs/superpowers/specs/2026-06-16-job-og-images-design.md`
-(source of truth for the layout and degradation rules).
-
 ## What Changes
 
 - Add a SvelteKit server endpoint `GET /jobs/:slug/og.png` that renders a
