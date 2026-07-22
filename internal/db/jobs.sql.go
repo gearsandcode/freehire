@@ -945,7 +945,8 @@ type ListJobsUpdatedAfterParams struct {
 
 // Incremental keyset scan for `reindex --since`: like ListJobsByIDAfter but only
 // rows changed at or after the cutoff. Every write path (UpsertJob, the close
-// sweeps, SetJobEnrichment, UpdateJobFacets) stamps updated_at = now(), so this
+// sweeps, SetJobEnrichment, UpdateJobDerived on a fingerprint move) stamps
+// updated_at = now(), so this
 // captures new, re-crawled, closed, and re-enriched jobs — enough to bring an
 // index current without re-pushing the whole table. Returns closed rows too, so
 // the caller deletes a freshly-closed job from the index.
@@ -1695,6 +1696,91 @@ func (q *Queries) TouchJob(ctx context.Context, arg TouchJobParams) (string, err
 	return company_slug, err
 }
 
+const updateJobDerived = `-- name: UpdateJobDerived :exec
+UPDATE jobs
+SET countries = COALESCE($1::text[], '{}'),
+    regions   = COALESCE($2::text[], '{}'),
+    cities    = COALESCE($3::text[], '{}'),
+    work_mode = $4,
+    skills    = COALESCE($5::text[], '{}'),
+    seniority = $6,
+    category  = $7,
+    is_tech   = $8,
+    posting_language     = $9,
+    employment_type      = $10,
+    education_level      = $11,
+    english_level        = $12,
+    experience_years_min = $13,
+    role_fingerprint = $14,
+    public_slug      = $15,
+    company_slug     = $16,
+    updated_at = CASE
+        WHEN role_fingerprint IS DISTINCT FROM $14 THEN now()
+        ELSE updated_at
+    END
+WHERE id = $17
+`
+
+type UpdateJobDerivedParams struct {
+	Countries          []string    `json:"countries"`
+	Regions            []string    `json:"regions"`
+	Cities             []string    `json:"cities"`
+	WorkMode           string      `json:"work_mode"`
+	Skills             []string    `json:"skills"`
+	Seniority          string      `json:"seniority"`
+	Category           string      `json:"category"`
+	IsTech             pgtype.Bool `json:"is_tech"`
+	PostingLanguage    string      `json:"posting_language"`
+	EmploymentType     string      `json:"employment_type"`
+	EducationLevel     string      `json:"education_level"`
+	EnglishLevel       string      `json:"english_level"`
+	ExperienceYearsMin pgtype.Int4 `json:"experience_years_min"`
+	RoleFingerprint    pgtype.Text `json:"role_fingerprint"`
+	PublicSlug         string      `json:"public_slug"`
+	CompanySlug        string      `json:"company_slug"`
+	ID                 int64       `json:"id"`
+}
+
+// One-off re-derive (cmd/backfill-derive): rewrite in a single pass every column that
+// ingest computes as a pure function of a row's own raw/immutable fields — the
+// deterministic dictionary facets (countries, regions, cities, work_mode, skills,
+// seniority, category, is_tech, plus the synthetic enrichment facets posting_language,
+// employment_type, education_level, english_level, experience_years_min, all from
+// jobderive.Derive), the repost-identity role_fingerprint (internal/jobhash), and the
+// public_slug/company_slug (internal/normalize). One keyset scan propagates any
+// dictionary/algorithm change to old and closed rows that never re-crawl. Every column
+// is a pure function of the raw fields, so the write is idempotent. COALESCE maps a nil
+// array arg to '{}' for the NOT NULL array columns; work_mode is written as given by the
+// caller, which preserves an already-set (possibly adapter-structured) value.
+//
+// updated_at is bumped ONLY when role_fingerprint actually moves (the SET clause reads
+// the pre-update row, so the guard compares the stored fingerprint to the new one): a
+// fingerprint change must reach `reindex --since`, which recomputes duplicate_of, while a
+// facet/slug-only rewrite deliberately leaves the timestamp untouched so a big backfill
+// does not churn every row's updated_at.
+func (q *Queries) UpdateJobDerived(ctx context.Context, arg UpdateJobDerivedParams) error {
+	_, err := q.db.Exec(ctx, updateJobDerived,
+		arg.Countries,
+		arg.Regions,
+		arg.Cities,
+		arg.WorkMode,
+		arg.Skills,
+		arg.Seniority,
+		arg.Category,
+		arg.IsTech,
+		arg.PostingLanguage,
+		arg.EmploymentType,
+		arg.EducationLevel,
+		arg.EnglishLevel,
+		arg.ExperienceYearsMin,
+		arg.RoleFingerprint,
+		arg.PublicSlug,
+		arg.CompanySlug,
+		arg.ID,
+	)
+	return err
+}
+
 const updateJobDescription = `-- name: UpdateJobDescription :execrows
 UPDATE jobs
 SET description  = $1,
@@ -1719,120 +1805,6 @@ func (q *Queries) UpdateJobDescription(ctx context.Context, arg UpdateJobDescrip
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const updateJobFacets = `-- name: UpdateJobFacets :exec
-UPDATE jobs
-SET countries = COALESCE($1::text[], '{}'),
-    regions   = COALESCE($2::text[], '{}'),
-    cities    = COALESCE($3::text[], '{}'),
-    work_mode = $4,
-    skills    = COALESCE($5::text[], '{}'),
-    seniority = $6,
-    category  = $7,
-    is_tech   = $8,
-    posting_language     = $9,
-    employment_type      = $10,
-    education_level      = $11,
-    english_level        = $12,
-    experience_years_min = $13
-WHERE id = $14
-`
-
-type UpdateJobFacetsParams struct {
-	Countries          []string    `json:"countries"`
-	Regions            []string    `json:"regions"`
-	Cities             []string    `json:"cities"`
-	WorkMode           string      `json:"work_mode"`
-	Skills             []string    `json:"skills"`
-	Seniority          string      `json:"seniority"`
-	Category           string      `json:"category"`
-	IsTech             pgtype.Bool `json:"is_tech"`
-	PostingLanguage    string      `json:"posting_language"`
-	EmploymentType     string      `json:"employment_type"`
-	EducationLevel     string      `json:"education_level"`
-	EnglishLevel       string      `json:"english_level"`
-	ExperienceYearsMin pgtype.Int4 `json:"experience_years_min"`
-	ID                 int64       `json:"id"`
-}
-
-// One-off backfill (cmd/backfill-derive): rewrite every deterministic dictionary
-// facet column — countries, regions, work_mode, skills, seniority, category, is_tech, plus the
-// synthetic enrichment facets posting_language, employment_type, education_level,
-// english_level, and experience_years_min — from the row's raw content
-// (title/location/description) in one
-// pass, replacing the
-// three separate per-facet backfill writes. The facets are a pure function of the
-// raw fields, so this is idempotent. updated_at is deliberately left untouched
-// (like UpdateJobSlugs) so a backfill does not churn every row's timestamp. COALESCE
-// maps a nil array arg to '{}' for the NOT NULL array columns. work_mode is written
-// as given by the caller, which preserves an already-set (possibly
-// adapter-structured) value.
-func (q *Queries) UpdateJobFacets(ctx context.Context, arg UpdateJobFacetsParams) error {
-	_, err := q.db.Exec(ctx, updateJobFacets,
-		arg.Countries,
-		arg.Regions,
-		arg.Cities,
-		arg.WorkMode,
-		arg.Skills,
-		arg.Seniority,
-		arg.Category,
-		arg.IsTech,
-		arg.PostingLanguage,
-		arg.EmploymentType,
-		arg.EducationLevel,
-		arg.EnglishLevel,
-		arg.ExperienceYearsMin,
-		arg.ID,
-	)
-	return err
-}
-
-const updateJobRoleFingerprint = `-- name: UpdateJobRoleFingerprint :execrows
-UPDATE jobs
-SET role_fingerprint = $1,
-    updated_at       = now()
-WHERE id = $2
-  AND role_fingerprint IS DISTINCT FROM $1
-`
-
-type UpdateJobRoleFingerprintParams struct {
-	RoleFingerprint pgtype.Text `json:"role_fingerprint"`
-	ID              int64       `json:"id"`
-}
-
-// Rewrite one job's role_fingerprint (the repost-identity hash, internal/jobhash.
-// RoleFingerprint). The backfill-role-fingerprint one-shot uses this to apply a change
-// in the fingerprint's title normalization to existing rows WITHOUT a full re-ingest;
-// the IS DISTINCT FROM guard writes only rows whose fingerprint actually moved, so
-// re-runs are cheap and idempotent. Followed by a reindex, which recomputes duplicate_of.
-func (q *Queries) UpdateJobRoleFingerprint(ctx context.Context, arg UpdateJobRoleFingerprintParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateJobRoleFingerprint, arg.RoleFingerprint, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const updateJobSlugs = `-- name: UpdateJobSlugs :exec
-UPDATE jobs
-SET public_slug  = $1,
-    company_slug = $2
-WHERE id = $3
-`
-
-type UpdateJobSlugsParams struct {
-	PublicSlug  string `json:"public_slug"`
-	CompanySlug string `json:"company_slug"`
-	ID          int64  `json:"id"`
-}
-
-// One-off backfill for a deliberate slug-builder change (see the UpsertJob note on
-// why slugs are otherwise immutable). public_slug/company_slug are deterministic
-// from the row's immutable fields, so recomputing and rewriting them is idempotent.
-func (q *Queries) UpdateJobSlugs(ctx context.Context, arg UpdateJobSlugsParams) error {
-	_, err := q.db.Exec(ctx, updateJobSlugs, arg.PublicSlug, arg.CompanySlug, arg.ID)
-	return err
 }
 
 const updateManualJob = `-- name: UpdateManualJob :one

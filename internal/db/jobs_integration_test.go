@@ -244,7 +244,7 @@ func TestUpsertJobWritesAndRefreshesGeography(t *testing.T) {
 	}
 }
 
-func TestUpdateJobFacetsBackfillsAllColumns(t *testing.T) {
+func TestUpdateJobDerivedBackfillsAllColumns(t *testing.T) {
 	pool := startPostgres(t)
 	q := New(pool)
 	ctx := context.Background()
@@ -258,16 +258,21 @@ func TestUpdateJobFacetsBackfillsAllColumns(t *testing.T) {
 		t.Fatalf("precondition: want empty geography, got %v", job.Countries)
 	}
 
-	if err := q.UpdateJobFacets(ctx, UpdateJobFacetsParams{
-		ID:        job.ID,
-		Countries: []string{"de"},
-		Regions:   []string{"eu"},
-		WorkMode:  "remote",
-		Skills:    []string{"go"},
-		Seniority: "senior",
-		Category:  "backend",
+	// Carry the row's existing slugs/fingerprint through so this facet-focused
+	// assertion does not blank the columns UpdateJobDerived also owns.
+	if err := q.UpdateJobDerived(ctx, UpdateJobDerivedParams{
+		ID:              job.ID,
+		Countries:       []string{"de"},
+		Regions:         []string{"eu"},
+		WorkMode:        "remote",
+		Skills:          []string{"go"},
+		Seniority:       "senior",
+		Category:        "backend",
+		RoleFingerprint: job.RoleFingerprint,
+		PublicSlug:      job.PublicSlug,
+		CompanySlug:     job.CompanySlug,
 	}); err != nil {
-		t.Fatalf("update facets: %v", err)
+		t.Fatalf("update derived: %v", err)
 	}
 
 	got, err := q.GetJob(ctx, job.ID)

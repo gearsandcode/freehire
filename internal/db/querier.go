@@ -797,7 +797,8 @@ type Querier interface {
 	ListJobsBySourceAfter(ctx context.Context, arg ListJobsBySourceAfterParams) ([]Job, error)
 	// Incremental keyset scan for `reindex --since`: like ListJobsByIDAfter but only
 	// rows changed at or after the cutoff. Every write path (UpsertJob, the close
-	// sweeps, SetJobEnrichment, UpdateJobFacets) stamps updated_at = now(), so this
+	// sweeps, SetJobEnrichment, UpdateJobDerived on a fingerprint move) stamps
+	// updated_at = now(), so this
 	// captures new, re-crawled, closed, and re-enriched jobs — enough to bring an
 	// index current without re-pushing the whole table. Returns closed rows too, so
 	// the caller deletes a freshly-closed job from the index.
@@ -1320,34 +1321,29 @@ type Querier interface {
 	// Replace a CV's editable fields, stamping updated_at. Owner-scoped: no row is updated
 	// for a foreign or missing id (the handler maps the resulting no-row error to 404).
 	UpdateCV(ctx context.Context, arg UpdateCVParams) (UpdateCVRow, error)
+	// One-off re-derive (cmd/backfill-derive): rewrite in a single pass every column that
+	// ingest computes as a pure function of a row's own raw/immutable fields — the
+	// deterministic dictionary facets (countries, regions, cities, work_mode, skills,
+	// seniority, category, is_tech, plus the synthetic enrichment facets posting_language,
+	// employment_type, education_level, english_level, experience_years_min, all from
+	// jobderive.Derive), the repost-identity role_fingerprint (internal/jobhash), and the
+	// public_slug/company_slug (internal/normalize). One keyset scan propagates any
+	// dictionary/algorithm change to old and closed rows that never re-crawl. Every column
+	// is a pure function of the raw fields, so the write is idempotent. COALESCE maps a nil
+	// array arg to '{}' for the NOT NULL array columns; work_mode is written as given by the
+	// caller, which preserves an already-set (possibly adapter-structured) value.
+	//
+	// updated_at is bumped ONLY when role_fingerprint actually moves (the SET clause reads
+	// the pre-update row, so the guard compares the stored fingerprint to the new one): a
+	// fingerprint change must reach `reindex --since`, which recomputes duplicate_of, while a
+	// facet/slug-only rewrite deliberately leaves the timestamp untouched so a big backfill
+	// does not churn every row's updated_at.
+	UpdateJobDerived(ctx context.Context, arg UpdateJobDerivedParams) error
 	// Targeted description rewrite for cmd/backfill-justjoin: sets the description and the refreshed
 	// content_hash (recomputed in Go from the row's indexed fields with the new description) so the
 	// row re-indexes. Stamps updated_at so `reindex --since` also captures it. Only the description
 	// and hash move; the deterministic facets are re-derived separately by cmd/backfill-derive.
 	UpdateJobDescription(ctx context.Context, arg UpdateJobDescriptionParams) (int64, error)
-	// One-off backfill (cmd/backfill-derive): rewrite every deterministic dictionary
-	// facet column — countries, regions, work_mode, skills, seniority, category, is_tech, plus the
-	// synthetic enrichment facets posting_language, employment_type, education_level,
-	// english_level, and experience_years_min — from the row's raw content
-	// (title/location/description) in one
-	// pass, replacing the
-	// three separate per-facet backfill writes. The facets are a pure function of the
-	// raw fields, so this is idempotent. updated_at is deliberately left untouched
-	// (like UpdateJobSlugs) so a backfill does not churn every row's timestamp. COALESCE
-	// maps a nil array arg to '{}' for the NOT NULL array columns. work_mode is written
-	// as given by the caller, which preserves an already-set (possibly
-	// adapter-structured) value.
-	UpdateJobFacets(ctx context.Context, arg UpdateJobFacetsParams) error
-	// Rewrite one job's role_fingerprint (the repost-identity hash, internal/jobhash.
-	// RoleFingerprint). The backfill-role-fingerprint one-shot uses this to apply a change
-	// in the fingerprint's title normalization to existing rows WITHOUT a full re-ingest;
-	// the IS DISTINCT FROM guard writes only rows whose fingerprint actually moved, so
-	// re-runs are cheap and idempotent. Followed by a reindex, which recomputes duplicate_of.
-	UpdateJobRoleFingerprint(ctx context.Context, arg UpdateJobRoleFingerprintParams) (int64, error)
-	// One-off backfill for a deliberate slug-builder change (see the UpsertJob note on
-	// why slugs are otherwise immutable). public_slug/company_slug are deterministic
-	// from the row's immutable fields, so recomputing and rewriting them is idempotent.
-	UpdateJobSlugs(ctx context.Context, arg UpdateJobSlugsParams) error
 	// Moderator edit of a hand-curated job, addressed by public_slug and scoped to
 	// created_by IS NOT NULL so this path can only rewrite a moderator-authored posting,
 	// never an automated-source (ingest/telegram) one — regardless of the declared source.

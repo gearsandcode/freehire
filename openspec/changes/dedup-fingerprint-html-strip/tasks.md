@@ -7,6 +7,6 @@
 
 ## 2. Rollout (ops — executed at Finish, low-traffic window)
 
-- [ ] 2.1 After deploy, run `cmd/backfill-role-fingerprint` (tune `BACKFILL_CONCURRENCY`) to recompute every row's `role_fingerprint`; confirm `scanned`/`updated` counts are logged.
+- [ ] 2.1 After deploy, run `cmd/backfill-derive` (tune `BACKFILL_CONCURRENCY`) to recompute every row's `role_fingerprint` — the former `cmd/backfill-role-fingerprint` was merged into `backfill-derive`, which now re-derives facets + fingerprint + slugs in one pass using the same `jobhash.RoleFingerprint`; confirm `scanned`/`updated` counts are logged.
 - [ ] 2.2 Run `make reindex` on its own flock (not stacked with the semantic or companies reindex) to collapse newly-clustered reposts and union their geography.
 - [ ] 2.3 Verify on prod: the Towa "Senior Fullstack Engineer" cluster collapses its markup-only variants while Krakau (PLN) and the KV-clause Vienna posting stay distinct; spot-check a sample of the ~18k affected `(company, title)` groups.

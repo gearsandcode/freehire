@@ -42,7 +42,8 @@ WHERE id = sqlc.arg(id);
 -- name: ListJobsUpdatedAfter :many
 -- Incremental keyset scan for `reindex --since`: like ListJobsByIDAfter but only
 -- rows changed at or after the cutoff. Every write path (UpsertJob, the close
--- sweeps, SetJobEnrichment, UpdateJobFacets) stamps updated_at = now(), so this
+-- sweeps, SetJobEnrichment, UpdateJobDerived on a fingerprint move) stamps
+-- updated_at = now(), so this
 -- captures new, re-crawled, closed, and re-enriched jobs — enough to bring an
 -- index current without re-pushing the whole table. Returns closed rows too, so
 -- the caller deletes a freshly-closed job from the index.
@@ -320,18 +321,6 @@ LEFT JOIN LATERAL (
 WHERE o.closed_at IS NULL AND o.role_fingerprint IS NOT NULL AND o.role_fingerprint <> ''
 GROUP BY o.company_slug, o.role_fingerprint
 HAVING count(DISTINCT o.id) > 1;
-
--- name: UpdateJobRoleFingerprint :execrows
--- Rewrite one job's role_fingerprint (the repost-identity hash, internal/jobhash.
--- RoleFingerprint). The backfill-role-fingerprint one-shot uses this to apply a change
--- in the fingerprint's title normalization to existing rows WITHOUT a full re-ingest;
--- the IS DISTINCT FROM guard writes only rows whose fingerprint actually moved, so
--- re-runs are cheap and idempotent. Followed by a reindex, which recomputes duplicate_of.
-UPDATE jobs
-SET role_fingerprint = sqlc.arg(role_fingerprint),
-    updated_at       = now()
-WHERE id = sqlc.arg(id)
-  AND role_fingerprint IS DISTINCT FROM sqlc.arg(role_fingerprint);
 
 -- name: CompaniesWithRoleClusters :many
 -- Company slugs whose role-duplicate markers may need recomputing: a company with an
@@ -769,15 +758,6 @@ UPDATE jobs
 SET liveness_strikes = 0
 WHERE id = sqlc.arg(id) AND liveness_strikes <> 0;
 
--- name: UpdateJobSlugs :exec
--- One-off backfill for a deliberate slug-builder change (see the UpsertJob note on
--- why slugs are otherwise immutable). public_slug/company_slug are deterministic
--- from the row's immutable fields, so recomputing and rewriting them is idempotent.
-UPDATE jobs
-SET public_slug  = sqlc.arg(public_slug),
-    company_slug = sqlc.arg(company_slug)
-WHERE id = sqlc.arg(id);
-
 -- name: EnqueueJobEnrichment :execrows
 -- Transactional-outbox enqueue for the ingest write path: queue this one job for
 -- enrichment, gated on the same conditions the backfill uses (unenriched or below the
@@ -820,19 +800,24 @@ SET enrichment         = CASE
     updated_at         = now()
 WHERE id = sqlc.arg(id);
 
--- name: UpdateJobFacets :exec
--- One-off backfill (cmd/backfill-derive): rewrite every deterministic dictionary
--- facet column — countries, regions, work_mode, skills, seniority, category, is_tech, plus the
--- synthetic enrichment facets posting_language, employment_type, education_level,
--- english_level, and experience_years_min — from the row's raw content
--- (title/location/description) in one
--- pass, replacing the
--- three separate per-facet backfill writes. The facets are a pure function of the
--- raw fields, so this is idempotent. updated_at is deliberately left untouched
--- (like UpdateJobSlugs) so a backfill does not churn every row's timestamp. COALESCE
--- maps a nil array arg to '{}' for the NOT NULL array columns. work_mode is written
--- as given by the caller, which preserves an already-set (possibly
--- adapter-structured) value.
+-- name: UpdateJobDerived :exec
+-- One-off re-derive (cmd/backfill-derive): rewrite in a single pass every column that
+-- ingest computes as a pure function of a row's own raw/immutable fields — the
+-- deterministic dictionary facets (countries, regions, cities, work_mode, skills,
+-- seniority, category, is_tech, plus the synthetic enrichment facets posting_language,
+-- employment_type, education_level, english_level, experience_years_min, all from
+-- jobderive.Derive), the repost-identity role_fingerprint (internal/jobhash), and the
+-- public_slug/company_slug (internal/normalize). One keyset scan propagates any
+-- dictionary/algorithm change to old and closed rows that never re-crawl. Every column
+-- is a pure function of the raw fields, so the write is idempotent. COALESCE maps a nil
+-- array arg to '{}' for the NOT NULL array columns; work_mode is written as given by the
+-- caller, which preserves an already-set (possibly adapter-structured) value.
+--
+-- updated_at is bumped ONLY when role_fingerprint actually moves (the SET clause reads
+-- the pre-update row, so the guard compares the stored fingerprint to the new one): a
+-- fingerprint change must reach `reindex --since`, which recomputes duplicate_of, while a
+-- facet/slug-only rewrite deliberately leaves the timestamp untouched so a big backfill
+-- does not churn every row's updated_at.
 UPDATE jobs
 SET countries = COALESCE(sqlc.arg(countries)::text[], '{}'),
     regions   = COALESCE(sqlc.arg(regions)::text[], '{}'),
@@ -846,5 +831,12 @@ SET countries = COALESCE(sqlc.arg(countries)::text[], '{}'),
     employment_type      = sqlc.arg(employment_type),
     education_level      = sqlc.arg(education_level),
     english_level        = sqlc.arg(english_level),
-    experience_years_min = sqlc.arg(experience_years_min)
+    experience_years_min = sqlc.arg(experience_years_min),
+    role_fingerprint = sqlc.arg(role_fingerprint),
+    public_slug      = sqlc.arg(public_slug),
+    company_slug     = sqlc.arg(company_slug),
+    updated_at = CASE
+        WHEN role_fingerprint IS DISTINCT FROM sqlc.arg(role_fingerprint) THEN now()
+        ELSE updated_at
+    END
 WHERE id = sqlc.arg(id);

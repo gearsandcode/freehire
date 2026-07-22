@@ -6,18 +6,21 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/strelov1/freehire/internal/db"
 	"github.com/strelov1/freehire/internal/jobderive"
+	"github.com/strelov1/freehire/internal/jobhash"
 	"github.com/strelov1/freehire/internal/pgconv"
 )
 
 // fakeStore serves one page of jobs (keyset paging: AfterID 0 returns all, then
-// empty) and records every UpdateJobFacets call. UpdateJobFacets is guarded so the
+// empty) and records every UpdateJobDerived call. UpdateJobDerived is guarded so the
 // concurrent worker pool can call it in parallel without a data race.
 type fakeStore struct {
 	jobs    []db.Job
 	mu      sync.Mutex
-	updates []db.UpdateJobFacetsParams
+	updates []db.UpdateJobDerivedParams
 }
 
 func (f *fakeStore) ListJobsByIDAfter(_ context.Context, arg db.ListJobsByIDAfterParams) ([]db.Job, error) {
@@ -27,30 +30,50 @@ func (f *fakeStore) ListJobsByIDAfter(_ context.Context, arg db.ListJobsByIDAfte
 	return f.jobs, nil
 }
 
-func (f *fakeStore) UpdateJobFacets(_ context.Context, arg db.UpdateJobFacetsParams) error {
+func (f *fakeStore) UpdateJobDerived(_ context.Context, arg db.UpdateJobDerivedParams) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.updates = append(f.updates, arg)
 	return nil
 }
 
-// expectedFacets is the UpdateJobFacets the runner should write for a job: every
+// expectedDerived is the UpdateJobDerived the runner should write for a job: every
 // dictionary facet from jobderive.Derive (the six original plus the four synthetic
-// enrichment facets), and no slug fields.
-func expectedFacets(j db.Job) db.UpdateJobFacetsParams {
+// enrichment facets), the role_fingerprint computed from the freshly derived
+// company_slug, and the recomputed public_slug/company_slug.
+func expectedDerived(j db.Job) db.UpdateJobDerivedParams {
 	d := jobderive.Derive(jobderive.Input{
 		Title: j.Title, Company: j.Company, Source: j.Source, ExternalID: j.ExternalID,
 		Location: j.Location, Description: j.Description, WorkMode: j.WorkMode,
 	})
-	return db.UpdateJobFacetsParams{
+	fingerprint := jobhash.RoleFingerprint(db.UpsertJobParams{
+		CompanySlug: d.CompanySlug, Title: j.Title, Description: j.Description,
+	})
+	return db.UpdateJobDerivedParams{
 		ID: j.ID, Countries: d.Countries, Regions: d.Regions, Cities: d.Cities, WorkMode: d.WorkMode,
 		Skills: d.Skills, Seniority: d.Seniority, Category: d.Category,
 		IsTech:             pgconv.Bool(d.IsTech),
 		PostingLanguage:    d.PostingLanguage,
 		EmploymentType:     d.EmploymentType,
 		EducationLevel:     d.EducationLevel,
+		EnglishLevel:       d.EnglishLevel,
 		ExperienceYearsMin: pgconv.Int4(d.ExperienceYearsMin),
+		RoleFingerprint:    pgtype.Text{String: fingerprint, Valid: true},
+		PublicSlug:         d.PublicSlug,
+		CompanySlug:        d.CompanySlug,
 	}
+}
+
+// seedDerived stamps a job with the exact values its own derivation produces, so a
+// pass over it must rewrite nothing (idempotence precondition).
+func seedDerived(j db.Job) db.Job {
+	d := expectedDerived(j)
+	j.Countries, j.Regions, j.Cities, j.WorkMode = d.Countries, d.Regions, d.Cities, d.WorkMode
+	j.Skills, j.Seniority, j.Category, j.IsTech = d.Skills, d.Seniority, d.Category, d.IsTech
+	j.PostingLanguage, j.EmploymentType = d.PostingLanguage, d.EmploymentType
+	j.EducationLevel, j.EnglishLevel, j.ExperienceYearsMin = d.EducationLevel, d.EnglishLevel, d.ExperienceYearsMin
+	j.RoleFingerprint, j.PublicSlug, j.CompanySlug = d.RoleFingerprint, d.PublicSlug, d.CompanySlug
+	return j
 }
 
 // backfillJobDescription triggers both the original facets (skills) and the synthetic
@@ -58,65 +81,81 @@ func expectedFacets(j db.Job) db.UpdateJobFacetsParams {
 const backfillJobDescription = "We use Go, PostgreSQL and Kubernetes. This is a " +
 	"full-time role. A Bachelor's degree and 5+ years of experience are required."
 
-func TestBackfill_RewritesAllFacetsInOnePass(t *testing.T) {
+func TestBackfill_RewritesAllDerivedInOnePass(t *testing.T) {
 	job := db.Job{
 		ID: 7, Title: "Senior Go Developer", Company: "Acme",
 		Source: "manual", ExternalID: "x", Location: "Berlin, Germany",
 		Description: backfillJobDescription,
-		// facet columns empty → the derived values differ → a write happens.
+		// facet/slug/fingerprint columns empty → the derived values differ → a write happens.
 	}
 	store := &fakeStore{jobs: []db.Job{job}}
 
-	scanned, updated, err := backfillAll(context.Background(), store, 1)
+	scanned, updated, slugsMoved, err := backfillAll(context.Background(), store, 1)
 	if err != nil {
 		t.Fatalf("backfillAll: %v", err)
 	}
-	if scanned != 1 || updated != 1 {
-		t.Fatalf("scanned=%d updated=%d, want 1/1", scanned, updated)
+	if scanned != 1 || updated != 1 || slugsMoved != 1 {
+		t.Fatalf("scanned=%d updated=%d slugsMoved=%d, want 1/1/1", scanned, updated, slugsMoved)
 	}
 	if len(store.updates) != 1 {
-		t.Fatalf("got %d UpdateJobFacets calls, want 1", len(store.updates))
+		t.Fatalf("got %d UpdateJobDerived calls, want 1", len(store.updates))
 	}
-	want := expectedFacets(job)
+	want := expectedDerived(job)
 	if !reflect.DeepEqual(store.updates[0], want) {
-		t.Errorf("UpdateJobFacets = %+v, want %+v", store.updates[0], want)
+		t.Errorf("UpdateJobDerived = %+v, want %+v", store.updates[0], want)
 	}
-	// Guard that the synthetic facets were actually derived (so this test can't pass
-	// with everything at zero values).
+	// Guard that the synthetic facets, the fingerprint, and the slugs were actually
+	// derived (so this test can't pass with everything at zero values).
 	got := store.updates[0]
 	if got.PostingLanguage != "en" || got.EmploymentType != "full_time" ||
 		got.EducationLevel != "bachelor" || !got.ExperienceYearsMin.Valid {
 		t.Errorf("synthetic facets not derived: lang=%q type=%q edu=%q exp=%v",
 			got.PostingLanguage, got.EmploymentType, got.EducationLevel, got.ExperienceYearsMin)
 	}
+	if got.RoleFingerprint.String == "" || got.PublicSlug == "" || got.CompanySlug == "" {
+		t.Errorf("fingerprint/slugs not derived: fp=%q public=%q company=%q",
+			got.RoleFingerprint.String, got.PublicSlug, got.CompanySlug)
+	}
 }
 
 func TestBackfill_IsIdempotent(t *testing.T) {
-	job := db.Job{
+	job := seedDerived(db.Job{
 		ID: 7, Title: "Senior Go Developer", Company: "Acme",
 		Source: "manual", ExternalID: "x", Location: "Berlin, Germany",
 		Description: backfillJobDescription,
-	}
-	// Seed the columns with what the derivation already produces — a second pass
-	// must rewrite nothing.
-	d := expectedFacets(job)
-	job.Countries, job.Regions, job.WorkMode = d.Countries, d.Regions, d.WorkMode
-	job.Cities = d.Cities
-	job.Skills, job.Seniority, job.Category = d.Skills, d.Seniority, d.Category
-	job.IsTech = d.IsTech
-	job.PostingLanguage, job.EmploymentType = d.PostingLanguage, d.EmploymentType
-	job.EducationLevel, job.ExperienceYearsMin = d.EducationLevel, d.ExperienceYearsMin
+	})
 
 	store := &fakeStore{jobs: []db.Job{job}}
-	scanned, updated, err := backfillAll(context.Background(), store, 1)
+	scanned, updated, slugsMoved, err := backfillAll(context.Background(), store, 1)
 	if err != nil {
 		t.Fatalf("backfillAll: %v", err)
 	}
-	if scanned != 1 || updated != 0 {
-		t.Fatalf("scanned=%d updated=%d, want 1/0 (unchanged row skipped)", scanned, updated)
+	if scanned != 1 || updated != 0 || slugsMoved != 0 {
+		t.Fatalf("scanned=%d updated=%d slugsMoved=%d, want 1/0/0 (unchanged row skipped)", scanned, updated, slugsMoved)
 	}
 	if len(store.updates) != 0 {
 		t.Errorf("expected no writes for an unchanged row, got %d", len(store.updates))
+	}
+}
+
+// A row whose facets and fingerprint are already current but whose slug is stale (e.g.
+// after a slug-builder change) must still be rewritten AND counted as a slug move, so
+// the caller knows to reconcile the companies catalogue.
+func TestBackfill_CountsSlugMove(t *testing.T) {
+	job := seedDerived(db.Job{
+		ID: 7, Title: "Senior Go Developer", Company: "Acme",
+		Source: "manual", ExternalID: "x", Location: "Berlin, Germany",
+		Description: backfillJobDescription,
+	})
+	job.CompanySlug = "stale-company-slug" // only the slug is out of date
+
+	store := &fakeStore{jobs: []db.Job{job}}
+	scanned, updated, slugsMoved, err := backfillAll(context.Background(), store, 1)
+	if err != nil {
+		t.Fatalf("backfillAll: %v", err)
+	}
+	if scanned != 1 || updated != 1 || slugsMoved != 1 {
+		t.Fatalf("scanned=%d updated=%d slugsMoved=%d, want 1/1/1", scanned, updated, slugsMoved)
 	}
 }
 
@@ -128,7 +167,7 @@ func TestBackfill_PreservesSetWorkMode(t *testing.T) {
 		Location: "Berlin, Germany", WorkMode: "hybrid",
 	}
 	store := &fakeStore{jobs: []db.Job{job}}
-	if _, _, err := backfillAll(context.Background(), store, 1); err != nil {
+	if _, _, _, err := backfillAll(context.Background(), store, 1); err != nil {
 		t.Fatalf("backfillAll: %v", err)
 	}
 	for _, u := range store.updates {
@@ -153,12 +192,12 @@ func TestBackfill_Concurrent(t *testing.T) {
 	}
 	store := &fakeStore{jobs: jobs}
 
-	scanned, updated, err := backfillAll(context.Background(), store, 8)
+	scanned, updated, slugsMoved, err := backfillAll(context.Background(), store, 8)
 	if err != nil {
 		t.Fatalf("backfillAll: %v", err)
 	}
-	if scanned != n || updated != n {
-		t.Fatalf("scanned=%d updated=%d, want %d/%d", scanned, updated, n, n)
+	if scanned != n || updated != n || slugsMoved != n {
+		t.Fatalf("scanned=%d updated=%d slugsMoved=%d, want %d/%d/%d", scanned, updated, slugsMoved, n, n, n)
 	}
 	seen := make(map[int64]int, n)
 	for _, u := range store.updates {

@@ -1,12 +1,21 @@
-// Command backfill-derive re-derives the six deterministic dictionary facets —
-// countries, regions, work_mode, skills, seniority, category — on existing jobs in
-// a single pass, replacing the three separate per-facet backfill commands
-// (backfill-geo/-skills/-class). Ingest fills these on every crawl via
-// jobderive.Derive; rows that predate a dictionary change — and closed jobs that
-// never re-crawl — keep the stale values until this one-off worker rewrites them.
-// It pages the whole table and exits. Idempotent for jobs whose facets come from
-// the title/location/description dictionaries alone: re-deriving is a pure function
-// of those fields, so a second run rewrites nothing.
+// Command backfill-derive re-derives, in a single keyset pass over the whole jobs
+// table, every column that ingest computes as a pure function of a row's own raw
+// fields: the deterministic dictionary facets (countries, regions, cities, work_mode,
+// skills, seniority, category, is_tech, and the synthetic enrichment facets
+// posting_language, employment_type, education_level, english_level,
+// experience_years_min — all from jobderive.Derive), the repost-identity
+// role_fingerprint (internal/jobhash), and the public_slug/company_slug
+// (internal/normalize, via jobderive). It replaces the three former one-shots
+// backfill-derive (facets), backfill-role-fingerprint, and reslug with one scan.
+//
+// Ingest fills all of these on every crawl (job.New + cmd/ingest/store.go), so new
+// rows need no backfill; but rows that predate a dictionary or algorithm change — and
+// closed jobs that never re-crawl — keep the stale values until this worker rewrites
+// them. Because both the facets and the slugs come from jobderive.Derive and the
+// fingerprint is computed from the freshly derived company_slug, a re-derived row is
+// byte-for-byte what a fresh ingest of the same raw fields would produce. It pages the
+// whole table and exits. Idempotent: every column is a pure function of the raw
+// fields, so a second run rewrites nothing.
 //
 // The re-derive is CPU-bound (skilltag.Parse runs ~150 phrase regexes over each
 // HTML description), so a single-threaded pass over millions of rows takes hours.
@@ -17,8 +26,7 @@
 // write or host CPU saturates. Set a low CPUWeight on the unit so a big backfill
 // never starves the live API.
 //
-// Slugs are deliberately not touched (re-slugging stays cmd/reslug). work_mode is
-// preserved when already set: jobderive keeps a row's existing (possibly
+// work_mode is preserved when already set: jobderive keeps a row's existing (possibly
 // adapter-structured) work_mode over the parsed-location hint. The other
 // structured-source facets are NOT preserved: an adapter that emits a grade,
 // category, skills, or required-experience directly (e.g. getmatch) supplies those
@@ -28,6 +36,12 @@
 // the command's job is to propagate dictionary changes, which must keep updating
 // those facets for the dictionary-derived majority. A boardless adapter like
 // getmatch re-supplies the structured facets on its next full crawl.
+//
+// When a slug moves (a deliberate slug-builder change), the run re-keys the companies
+// catalogue afterwards (SyncCompaniesFromJobs + DeleteOrphanCompanies), exactly as the
+// former cmd/reslug did. Follow the run with a reindex (make reindex), whose
+// duplicate_of recompute then collapses any newly-clustered reposts and unions their
+// geography onto each canon.
 package main
 
 import (
@@ -39,8 +53,11 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/strelov1/freehire/internal/db"
 	"github.com/strelov1/freehire/internal/jobderive"
+	"github.com/strelov1/freehire/internal/jobhash"
 	"github.com/strelov1/freehire/internal/pgconv"
 	"github.com/strelov1/freehire/internal/worker"
 )
@@ -48,14 +65,16 @@ import (
 // backfillBatchSize bounds how many jobs are read per keyset page.
 const backfillBatchSize = 500
 
-// facetStore is the slice of the data layer the backfill needs: page the table by
-// keyset and rewrite a row's six facet columns. *db.Queries satisfies it; tests
-// use a fake. UpdateJobFacets is called concurrently by the worker pool, and
+// deriveStore is the slice of the data layer the concurrent pass needs: page the
+// table by keyset and rewrite a row's derived columns. *db.Queries satisfies it;
+// tests use a fake. UpdateJobDerived is called concurrently by the worker pool, and
 // pgxpool hands each goroutine its own connection, so the store must be safe for
-// concurrent use.
-type facetStore interface {
+// concurrent use. The companies reconcile (SyncCompaniesFromJobs /
+// DeleteOrphanCompanies) is deliberately not here — it runs once, single-threaded,
+// after the pass.
+type deriveStore interface {
 	ListJobsByIDAfter(ctx context.Context, arg db.ListJobsByIDAfterParams) ([]db.Job, error)
-	UpdateJobFacets(ctx context.Context, arg db.UpdateJobFacetsParams) error
+	UpdateJobDerived(ctx context.Context, arg db.UpdateJobDerivedParams) error
 }
 
 func main() {
@@ -70,14 +89,33 @@ func run() int {
 	}
 	defer cleanup()
 
+	queries := db.New(pool)
 	concurrency := backfillConcurrency()
 	log.Printf("backfill-derive starting: concurrency=%d", concurrency)
-	scanned, updated, err := backfillAll(ctx, db.New(pool), concurrency)
+	scanned, updated, slugsMoved, err := backfillAll(ctx, queries, concurrency)
 	if err != nil {
 		log.Printf("backfill-derive: %v", err)
 		return 1
 	}
-	log.Printf("backfill-derive done: scanned=%d updated=%d", scanned, updated)
+
+	// A slug rewrite re-keys jobs.company_slug; reconcile the derived companies
+	// catalogue to match (and drop rows orphaned by the change) so company pages
+	// resolve. Skip the whole-table sync when no slug moved.
+	var orphaned int64
+	if slugsMoved > 0 {
+		if err := queries.SyncCompaniesFromJobs(ctx); err != nil {
+			log.Printf("backfill-derive: sync companies: %v", err)
+			return 1
+		}
+		orphaned, err = queries.DeleteOrphanCompanies(ctx)
+		if err != nil {
+			log.Printf("backfill-derive: delete orphan companies: %v", err)
+			return 1
+		}
+	}
+
+	log.Printf("backfill-derive done: scanned=%d updated=%d slugs_moved=%d companies_orphaned=%d (follow with a reindex)",
+		scanned, updated, slugsMoved, orphaned)
 	return 0
 }
 
@@ -90,9 +128,13 @@ func backfillConcurrency() int {
 	return 1
 }
 
-// deriveFacets re-derives a job's facet columns and reports whether they differ
-// from what is stored (i.e. a write is needed). Pure — safe to call concurrently.
-func deriveFacets(j db.Job) (db.UpdateJobFacetsParams, bool) {
+// deriveRow re-derives a job's facets, role_fingerprint, and slugs, and reports
+// whether the derived values differ from what is stored (changed → a write is needed)
+// and whether specifically a slug moved (slugMoved → the companies catalogue needs
+// re-keying). The fingerprint is computed from the freshly derived company_slug, so
+// the result matches what cmd/ingest/store.go writes for the same raw fields. Pure —
+// safe to call concurrently.
+func deriveRow(j db.Job) (params db.UpdateJobDerivedParams, changed, slugMoved bool) {
 	d := jobderive.Derive(jobderive.Input{
 		Title:       j.Title,
 		Company:     j.Company,
@@ -102,9 +144,15 @@ func deriveFacets(j db.Job) (db.UpdateJobFacetsParams, bool) {
 		Description: j.Description,
 		WorkMode:    j.WorkMode, // preserves a set work_mode (jobderive precedence)
 	})
+	fingerprint := jobhash.RoleFingerprint(db.UpsertJobParams{
+		CompanySlug: d.CompanySlug,
+		Title:       j.Title,
+		Description: j.Description,
+	})
 	experience := pgconv.Int4(d.ExperienceYearsMin)
 	isTech := pgconv.Bool(d.IsTech)
-	changed := !(slices.Equal(d.Countries, j.Countries) &&
+
+	facetsMoved := !(slices.Equal(d.Countries, j.Countries) &&
 		slices.Equal(d.Regions, j.Regions) &&
 		slices.Equal(d.Cities, j.Cities) &&
 		d.WorkMode == j.WorkMode &&
@@ -117,7 +165,10 @@ func deriveFacets(j db.Job) (db.UpdateJobFacetsParams, bool) {
 		d.EducationLevel == j.EducationLevel &&
 		d.EnglishLevel == j.EnglishLevel &&
 		experience == j.ExperienceYearsMin)
-	return db.UpdateJobFacetsParams{
+	fingerprintMoved := fingerprint != j.RoleFingerprint.String
+	slugMoved = d.PublicSlug != j.PublicSlug || d.CompanySlug != j.CompanySlug
+
+	return db.UpdateJobDerivedParams{
 		ID:                 j.ID,
 		Countries:          d.Countries,
 		Regions:            d.Regions,
@@ -132,22 +183,27 @@ func deriveFacets(j db.Job) (db.UpdateJobFacetsParams, bool) {
 		EducationLevel:     d.EducationLevel,
 		EnglishLevel:       d.EnglishLevel,
 		ExperienceYearsMin: experience,
-	}, changed
+		RoleFingerprint:    pgtype.Text{String: fingerprint, Valid: true},
+		PublicSlug:         d.PublicSlug,
+		CompanySlug:        d.CompanySlug,
+	}, facetsMoved || fingerprintMoved || slugMoved, slugMoved
 }
 
-// backfillAll re-derives every job's facet columns and rewrites the rows whose
-// derived facets differ from what is stored. A single reader pages by keyset
+// backfillAll re-derives every job's facets, fingerprint, and slugs and rewrites the
+// rows whose derived values differ from what is stored. A single reader pages by keyset
 // (id > last seen) so concurrent writes cannot skip or repeat rows, and a pool of
-// `concurrency` workers derives and writes in parallel (order-independent). The
-// first store error cancels the run and is returned.
-func backfillAll(ctx context.Context, store facetStore, concurrency int) (scanned, updated int, err error) {
+// `concurrency` workers derives and writes in parallel (order-independent). It reports
+// how many rows were written (updated) and how many of those moved a slug (slugsMoved),
+// so the caller knows whether to reconcile companies. The first store error cancels the
+// run and is returned.
+func backfillAll(ctx context.Context, store deriveStore, concurrency int) (scanned, updated, slugsMoved int, err error) {
 	if concurrency < 1 {
 		concurrency = 1
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	var scannedN, updatedN int64
+	var scannedN, updatedN, slugsN int64
 	var errOnce sync.Once
 	var runErr error
 	fail := func(e error) {
@@ -197,20 +253,23 @@ func backfillAll(ctx context.Context, store facetStore, concurrency int) (scanne
 			defer workerWG.Done()
 			for j := range jobsCh {
 				atomic.AddInt64(&scannedN, 1)
-				params, changed := deriveFacets(j)
+				params, changed, slugMoved := deriveRow(j)
 				if !changed {
 					continue
 				}
-				if e := store.UpdateJobFacets(ctx, params); e != nil {
+				if e := store.UpdateJobDerived(ctx, params); e != nil {
 					fail(e)
 					return
 				}
 				atomic.AddInt64(&updatedN, 1)
+				if slugMoved {
+					atomic.AddInt64(&slugsN, 1)
+				}
 			}
 		}()
 	}
 
 	workerWG.Wait()
 	readerWG.Wait()
-	return int(scannedN), int(updatedN), runErr
+	return int(scannedN), int(updatedN), int(slugsN), runErr
 }
