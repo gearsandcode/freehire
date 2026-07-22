@@ -62,3 +62,42 @@ func TestStage2SystemPrompt_RemoteLocationRule(t *testing.T) {
 		t.Errorf("stage2 system prompt must instruct remote-only location scoring:\n%s", sp)
 	}
 }
+
+func TestStage3SystemPrompt_SynonymOnlyRequiredDiscipline(t *testing.T) {
+	// The skeptic must not let thin evidence on a required requirement prop up
+	// skills_coverage — an adjacent-exposure "synonym-only" match, or a "covered" match
+	// backed only by a bare "keyword" mention, is not direct ownership. Guards against the
+	// hard-negative the audit pass exists to catch (deploying Helm ≠ owning the skill).
+	sp := stage3SystemPrompt()
+	for _, want := range []string{"synonym-only", "keyword", "adjacent"} {
+		if !strings.Contains(sp, want) {
+			t.Errorf("stage3 system prompt must demote weak matches on required items (missing %q):\n%s", want, sp)
+		}
+	}
+}
+
+func TestStage1SystemPrompt_GradesEvidenceStrength(t *testing.T) {
+	// Stage 1 must ask for evidence_strength on positive statuses and name the four tiers,
+	// so the audit and served verdict can tell a metric-backed match from a bare keyword.
+	sp := stage1SystemPrompt()
+	for _, want := range []string{"evidence_strength", "metric", "scope", "responsibility", "keyword"} {
+		if !strings.Contains(sp, want) {
+			t.Errorf("stage1 system prompt must request graded evidence (missing %q):\n%s", want, sp)
+		}
+	}
+}
+
+func TestWriteRequirements_RendersStrengthForPositiveOnly(t *testing.T) {
+	var b strings.Builder
+	writeRequirements(&b, []Requirement{
+		{Text: "Go", Priority: PriorityRequired, Status: StatusCovered, EvidenceStrength: StrengthMetric},
+		{Text: "Kafka", Priority: PriorityRequired, Status: StatusMissingGap},
+	})
+	got := b.String()
+	if !strings.Contains(got, "[required/covered/metric] Go") {
+		t.Errorf("positive requirement must render its strength:\n%s", got)
+	}
+	if !strings.Contains(got, "[required/missing-gap] Kafka") {
+		t.Errorf("missing requirement must render status-only (no trailing strength):\n%s", got)
+	}
+}

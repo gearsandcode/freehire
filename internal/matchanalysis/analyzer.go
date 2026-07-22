@@ -200,6 +200,11 @@ func stage1SystemPrompt() string {
 	b.WriteString("\"missing-have\" (the CV evidences it elsewhere but never states the term), ")
 	b.WriteString("\"missing-gap\" (a genuine gap — absent, no close equivalent held).\n")
 	b.WriteString("  - \"evidence\": where it appears in the CV, or why it is absent.\n")
+	b.WriteString("  - \"evidence_strength\": for \"covered\"/\"synonym-only\" only, grade the cited evidence ")
+	b.WriteString("as \"metric\" (an accomplishment with a number, scale, or measured outcome), ")
+	b.WriteString("\"scope\" (breadth: teams, systems, regions), \"responsibility\" (clear ownership with ")
+	b.WriteString("tools or methods), or \"keyword\" (the term is present but only a bare mention or ")
+	b.WriteString("duty). Omit it for \"missing-have\"/\"missing-gap\".\n")
 	b.WriteString("Base every judgement only on the CV text. NEVER fabricate a skill the CV does not ")
 	b.WriteString("evidence — a genuine gap is \"missing-gap\", never hidden.\n")
 	return b.String()
@@ -241,6 +246,11 @@ func stage3SystemPrompt() string {
 	b.WriteString("Return ONLY a JSON object in the SAME shape as the verdict you are given.\n\n")
 	b.WriteString("Challenge it against the CV evidence: lower any inflated dimension score, remove ")
 	b.WriteString("strengths the CV does not actually support, and surface gaps that were glossed over. ")
+	b.WriteString("For any requirement marked \"required\", treat weak evidence as thin support: a ")
+	b.WriteString("\"synonym-only\" match, or a \"covered\" match graded \"keyword\" strength (a bare ")
+	b.WriteString("mention rather than a metric-, scope-, or responsibility-backed one), is adjacent ")
+	b.WriteString("exposure, not direct ownership — it may earn partial credit but must not by itself ")
+	b.WriteString("sustain a high skills_coverage score. ")
 	b.WriteString("Keep what is well-supported. Return the corrected verdict with the same keys ")
 	b.WriteString("(title_alignment, experience_relevance, seniority_fit, skills_coverage, ")
 	b.WriteString("company_context, location_fit, strengths, gaps, recommendation). Do NOT fabricate anything.\n")
@@ -445,7 +455,11 @@ func writeRequirements(b *strings.Builder, reqs []Requirement) {
 	}
 	b.WriteString("Requirement match (from the ATS stage):\n")
 	for _, r := range reqs {
-		b.WriteString("- [" + r.Priority + "/" + r.Status + "] " + r.Text + "\n")
+		tag := r.Priority + "/" + r.Status
+		if r.EvidenceStrength != "" {
+			tag += "/" + r.EvidenceStrength
+		}
+		b.WriteString("- [" + tag + "] " + r.Text + "\n")
 	}
 	b.WriteString("\n")
 }
