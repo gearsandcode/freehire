@@ -80,6 +80,10 @@ func (a *API) GetMatchAnalysis(c *fiber.Ctx) error {
 	if analysis == nil {
 		return c.JSON(fiber.Map{"data": matchAnalysisResponse{HasCV: true, Credits: bal}})
 	}
+	// Recompute the hard-constraint ceiling from the current job/résumé/dictionary and
+	// apply it to the cached analysis on read — the cap is never stored, so a dictionary
+	// change takes effect without marking the cache stale.
+	a.capServedAnalysis(c.Context(), userID, job, analysis)
 	stale := !stampsFresh(row, cvUploadedAt, job.ContentHash, a.matchAnalysis.ModelID())
 	return c.JSON(fiber.Map{"data": matchAnalysisResponse{HasCV: true, Stale: stale, Analysis: analysis, Credits: bal}})
 }
@@ -127,6 +131,10 @@ func (a *API) PostMatchAnalysis(c *fiber.Ctx) error {
 	// dimension; a missing profile is tolerated (zero value → empty skills/preferences).
 	profile, _ := a.userProfile.Get(c.Context(), userID)
 
+	// Compute the hard-constraint blockers once: the unmet ones ground the prompt
+	// (below) and the same list caps the served score (applyBlockers, after caching).
+	blockers := a.jobBlockers(c.Context(), userID, job, profile)
+
 	analysis, err := a.matchAnalysis.Analyze(c.Context(), matchanalysis.Input{
 		JobTitle:            job.Title,
 		JobDescription:      job.Description,
@@ -140,6 +148,7 @@ func (a *API) PostMatchAnalysis(c *fiber.Ctx) error {
 		JobRegions:          job.Regions,
 		JobCountries:        job.Countries,
 		LocationPreferences: string(profile.LocationPreferences),
+		Blockers:            blockers,
 	})
 	if err != nil {
 		// Best-effort: log (never the CV/job text) and serve no analysis.
@@ -154,6 +163,9 @@ func (a *API) PostMatchAnalysis(c *fiber.Ctx) error {
 	if isNew {
 		a.debitMatch(c.Context(), userID, job.ID)
 	}
+	// Cache holds the uncapped LLM analysis; cap the served copy from the blockers we
+	// already computed for the prompt (same recompute-on-read the GET path does).
+	applyBlockers(analysis, blockers)
 	return c.JSON(fiber.Map{"data": matchAnalysisResponse{HasCV: true, Stale: false, Analysis: analysis}})
 }
 

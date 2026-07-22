@@ -338,6 +338,37 @@ export interface JobMatch {
 }
 
 /**
+ * BlockerCategory names the requirement axis a blocker covers.
+ */
+export type BlockerCategory = string;
+export const CategoryExperience: BlockerCategory = "experience";
+export const CategoryEducation: BlockerCategory = "education";
+export const CategoryLanguage: BlockerCategory = "language";
+export const CategoryWorkAuth: BlockerCategory = "work_authorization";
+export const CategoryLocationWorkMode: BlockerCategory = "location_work_mode";
+export const CategoryCertification: BlockerCategory = "certification";
+/**
+ * BlockerSeverity grades how hard a blocker is: legal/binary constraints are hard, fit
+ * constraints are soft.
+ */
+export type BlockerSeverity = string;
+export const SeverityHard: BlockerSeverity = "hard";
+export const SeverityMedium: BlockerSeverity = "medium";
+export const SeveritySoft: BlockerSeverity = "soft";
+/**
+ * Blocker is one evaluated requirement. Met is true when the résumé satisfies it
+ * (kept so the UI can show a ✓); only Met==false entries count toward the cap.
+ */
+export interface Blocker {
+  category: BlockerCategory;
+  severity: BlockerSeverity;
+  score_cap: number /* int */;
+  reason: string;
+  action: string;
+  met: boolean;
+}
+
+/**
  * Canonical dimension keys, in the fixed display/scoring order. The model returns
  * the six scores by name; the wire Dimensions slice is built here so a dropped,
  * reordered, or injected dimension can never reach the response.
@@ -447,6 +478,7 @@ export interface Analysis {
   strengths: string[];
   gaps: string[];
   recommendation: string;
+  blockers: Blocker[];
 }
 
 /**
@@ -467,6 +499,7 @@ export interface Structured {
   languages?: string[];
   links?: string[];
   skills?: string[];
+  certifications?: string[];
   projects?: Project[];
 }
 /**
