@@ -1,0 +1,14 @@
+import{U as V,e as l,V as C,I as W,W as I,f as w,g as A,h as M,i as O}from"./template-tT34KPOZ.js";import{b as P}from"./attributes-Bp59jm6V.js";import{p as U,r as j}from"./props-Cf8R3aP3.js";import{a as q}from"./cn-fA2G5DTu.js";import"./utils-Bqw0_cdZ.js";function z(e,a,n=a){var s=new WeakSet;V(e,"input",async t=>{var r=t?e.defaultValue:e.value;if(r=v(e)?f(r):r,n(r),l!==null&&s.add(l),await C(),r!==(r=a())){var m=e.selectionStart,i=e.selectionEnd,p=e.value.length;if(e.value=r??"",i!==null){var o=e.value.length;m===i&&i===p&&o>p?(e.selectionStart=o,e.selectionEnd=o):(e.selectionStart=m,e.selectionEnd=Math.min(i,o))}}}),W(a)==null&&e.value&&(n(v(e)?f(e.value):e.value),l!==null&&s.add(l)),I(()=>{var t=a();if(e===document.activeElement){var r=l;if(s.has(r))return}v(e)&&t===f(e.value)||e.type==="date"&&!t&&!e.value||t!==e.value&&(e.value=t??"")})}function v(e){var a=e.type;return a==="number"||a==="range"}function f(e){return e===""?null:+e}var B=new Set(["$$slots","$$events","$$legacy","value","class"]),F=O("<input/>");function E(e,a){M(a,!0);let n=U(a,"value",15),s=j(a,B);var t=F();P(t,r=>({class:r,...s}),[()=>q("h-9 rounded-lg border border-input bg-transparent px-3 transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-input/30",a.class)],void 0,void 0,void 0,!0),z(t,n),w(e,t),A()}E.__docgen={data:[{name:"value",visibility:"public",keywords:[],kind:"let",type:{kind:"type",type:"any",text:"any"},static:!1,readonly:!1,defaultValue:"..."},{name:"class",visibility:"public",keywords:[],kind:"let",type:{kind:"union",type:[{kind:"type",type:"string",text:"string"},{kind:"type",type:"intersection",text:"string & ClassArray"},{kind:"type",type:"intersection",text:"string & ClassDictionary"}],text:"string | string & ClassArray | string & ClassDictionary"},static:!1,readonly:!1}],name:"input.svelte"};const N={title:"Primitives/Input",component:E,tags:["autodocs"]},c={args:{placeholder:"Enter text..."}},d={args:{value:"hello@freehire.dev"}},u={args:{placeholder:"Disabled",disabled:!0}};var y,b,g;c.parameters={...c.parameters,docs:{...(y=c.parameters)==null?void 0:y.docs,source:{originalSource:`{
+  args: {
+    placeholder: 'Enter text...'
+  }
+}`,...(g=(b=c.parameters)==null?void 0:b.docs)==null?void 0:g.source}}};var h,_,k;d.parameters={...d.parameters,docs:{...(h=d.parameters)==null?void 0:h.docs,source:{originalSource:`{
+  args: {
+    value: 'hello@freehire.dev'
+  }
+}`,...(k=(_=d.parameters)==null?void 0:_.docs)==null?void 0:k.source}}};var x,D,S;u.parameters={...u.parameters,docs:{...(x=u.parameters)==null?void 0:x.docs,source:{originalSource:`{
+  args: {
+    placeholder: 'Disabled',
+    disabled: true
+  }
+}`,...(S=(D=u.parameters)==null?void 0:D.docs)==null?void 0:S.source}}};const Q=["Default","WithValue","Disabled"];export{c as Default,u as Disabled,d as WithValue,Q as __namedExportsOrder,N as default};

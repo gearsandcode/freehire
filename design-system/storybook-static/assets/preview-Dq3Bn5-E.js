@@ -1,0 +1,1 @@
+const a={parameters:{controls:{matchers:{color:/(background|color)$/i,date:/Date$/i}},backgrounds:{options:{light:{name:"Light",value:"oklch(0.997 0.003 130)"},dark:{name:"Dark",value:"oklch(0.16 0.006 110)",class:"dark"}}}}};export{a as default};

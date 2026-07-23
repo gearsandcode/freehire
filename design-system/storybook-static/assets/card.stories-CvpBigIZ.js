@@ -1,0 +1,5 @@
+import{t as l,f as p,g as m,h as f,i as u,j as g}from"./template-tT34KPOZ.js";import{s as h}from"./snippet-B2J6bAY9.js";import{c as v,a as y,s as b}from"./cn-fA2G5DTu.js";import"./branches-D8WOO6Hk.js";var _=u("<div><!></div>");function i(n,t){f(t,!0);var r=_(),d=g(r);h(d,()=>t.children),l(c=>b(r,1,c),[()=>v(y("rounded-lg border border-border bg-card text-card-foreground shadow-sm",t.class))]),p(n,r),m()}i.__docgen={data:[{name:"class",visibility:"public",keywords:[],kind:"let",type:{kind:"type",type:"string",text:"string"},static:!1,readonly:!1},{name:"children",visibility:"public",keywords:[{name:"required",description:""}],kind:"let",type:{kind:"function",text:"Snippet<[]>"},static:!1,readonly:!1}],name:"card.svelte"};const D={title:"Primitives/Card",component:i,tags:["autodocs"]},e={args:{children:"Card content goes here."}};var a,s,o;e.parameters={...e.parameters,docs:{...(a=e.parameters)==null?void 0:a.docs,source:{originalSource:`{
+  args: {
+    children: 'Card content goes here.'
+  }
+}`,...(o=(s=e.parameters)==null?void 0:s.docs)==null?void 0:o.source}}};const S=["Default"];export{e as Default,S as __namedExportsOrder,D as default};

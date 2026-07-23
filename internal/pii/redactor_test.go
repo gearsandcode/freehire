@@ -29,11 +29,11 @@ func mustBuild(t *testing.T, text string, known Contacts, d Detector) *Redactor 
 }
 
 func TestRedactMasksAllPII(t *testing.T) {
-	cv := "Ilya Strelov\nstrelov1@gmail.com | github.com/strelov1\nSenior Engineer at RingCentral in London"
-	r := mustBuild(t, cv, Contacts{}, nameDetector{names: []string{"Ilya Strelov"}})
+	cv := "Ada Lovelace\nada.lovelace@example.com | github.com/adalovelace\nSenior Engineer at RingCentral in London"
+	r := mustBuild(t, cv, Contacts{}, nameDetector{names: []string{"Ada Lovelace"}})
 	masked := r.Redact(cv)
 
-	for _, leak := range []string{"Ilya Strelov", "strelov1@gmail.com", "github.com/strelov1"} {
+	for _, leak := range []string{"Ada Lovelace", "ada.lovelace@example.com", "github.com/adalovelace"} {
 		if strings.Contains(masked, leak) {
 			t.Errorf("masked text still contains PII %q:\n%s", leak, masked)
 		}
@@ -47,8 +47,8 @@ func TestRedactMasksAllPII(t *testing.T) {
 }
 
 func TestRestoreRoundTrip(t *testing.T) {
-	cv := "Ilya Strelov — strelov1@gmail.com — github.com/strelov1"
-	r := mustBuild(t, cv, Contacts{}, nameDetector{names: []string{"Ilya Strelov"}})
+	cv := "Ada Lovelace — ada.lovelace@example.com — github.com/adalovelace"
+	r := mustBuild(t, cv, Contacts{}, nameDetector{names: []string{"Ada Lovelace"}})
 	if got := r.Restore(r.Redact(cv)); got != cv {
 		t.Fatalf("round-trip mismatch:\n got %q\nwant %q", got, cv)
 	}
@@ -73,13 +73,44 @@ func TestDistinctValuesGetDistinctPlaceholders(t *testing.T) {
 func TestKnownContactsMaskedInOtherText(t *testing.T) {
 	// The CV text the Redactor is built from, plus a separate structured-JSON blob that
 	// carries the same contacts — both must mask with the SAME redactor (matchanalysis case).
-	cv := "Ilya Strelov works remotely"
-	structured := `{"full_name":"Ilya Strelov","email":"strelov1@gmail.com"}`
-	known := Contacts{FullName: "Ilya Strelov", Email: "strelov1@gmail.com"}
-	r := mustBuild(t, cv, known, nameDetector{names: []string{"Ilya Strelov"}})
+	cv := "Ada Lovelace works remotely"
+	structured := `{"full_name":"Ada Lovelace","email":"ada.lovelace@example.com"}`
+	known := Contacts{FullName: "Ada Lovelace", Email: "ada.lovelace@example.com"}
+	r := mustBuild(t, cv, known, nameDetector{names: []string{"Ada Lovelace"}})
 	masked := r.Redact(structured)
-	if strings.Contains(masked, "Ilya Strelov") || strings.Contains(masked, "strelov1@gmail.com") {
+	if strings.Contains(masked, "Ada Lovelace") || strings.Contains(masked, "ada.lovelace@example.com") {
 		t.Fatalf("known contacts leaked in structured blob: %s", masked)
+	}
+}
+
+// spansDetector returns a fixed span set, to reproduce messy real-CV detections.
+type spansDetector struct{ spans []Span }
+
+func (d spansDetector) Detect(_ context.Context, _ string) ([]Span, error) { return d.spans, nil }
+
+func TestContacts_RejectsHandleNameAndCleansLinks(t *testing.T) {
+	// A handle the model mis-tags as a person, a duplicate link, and a garbled model link
+	// span that swallowed surrounding text — as seen on a real two-column CV.
+	text := "@jprice_dev github.com/alex CONTACTS\n https://x.io"
+	det := spansDetector{spans: []Span{
+		{Start: 0, End: 10, Kind: KindName},         // "@jprice_dev" — not a real name
+		{Start: 11, End: 26, Kind: KindLink},        // "github.com/alex" (dup of regex)
+		{Start: 27, End: len(text), Kind: KindLink}, // "CONTACTS\n https://x.io" — garbled
+	}}
+	c := mustBuild(t, text, Contacts{}, det).Contacts()
+
+	if c.FullName != "" {
+		t.Errorf("FullName = %q, want empty (a @handle is not a name)", c.FullName)
+	}
+	seen := map[string]bool{}
+	for _, l := range c.Links {
+		if seen[l] {
+			t.Errorf("duplicate link %q in %v", l, c.Links)
+		}
+		seen[l] = true
+		if strings.ContainsAny(l, " \t\n") {
+			t.Errorf("garbled link with whitespace: %q", l)
+		}
 	}
 }
 
