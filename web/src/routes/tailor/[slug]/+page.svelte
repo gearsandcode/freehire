@@ -12,16 +12,17 @@
   import { onMount, onDestroy } from 'svelte';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { ZoomIn, ZoomOut, Download } from '@lucide/svelte';
+  import { ZoomIn, ZoomOut, Download, Menu } from '@lucide/svelte';
   import { api, ApiError } from '$lib/api';
   import { createSession } from '$lib/assistant/api';
   import AssistantChat from '$lib/assistant/AssistantChat.svelte';
   import ArtifactPanel from '$lib/tailor/ArtifactPanel.svelte';
   import CvHtmlPreview from '$lib/tailor/CvHtmlPreview.svelte';
   import CvSectionForm from '$lib/components/cv/CvSectionForm.svelte';
+  import MarginSettings from '$lib/components/cv/MarginSettings.svelte';
   import AccountNavRail from '$lib/components/AccountNavRail.svelte';
   import { clampWidth } from '$lib/tailor/geometry';
-  import { toEditable, type CvRecord } from '$lib/cv';
+  import { toEditable, emptyDocument, type CvRecord } from '$lib/cv';
   import type { Analysis, Document } from '$lib/generated/contracts';
   import type { Job } from '$lib/types';
 
@@ -37,7 +38,7 @@
   let job = $state<Job | null>(null);
 
   // Page-owned CV state: the single client source of truth the Editor binds and the preview reads.
-  let doc = $state<Document>({ header: {} });
+  let doc = $state<Document>(emptyDocument());
   let title = $state('');
   let templateId = $state('classic-ats');
   let cvLoaded = $state(false);
@@ -50,10 +51,41 @@
 
   // Left panel: which tab is shown, and its resizable width. The chat stays mounted across tab
   // switches (hidden, not unmounted) so its live session is never dropped.
-  let leftTab = $state<'chat' | 'editor'>('chat');
+  let leftTab = $state<'chat' | 'editor' | 'settings'>('chat');
   let leftWidth = $state(380);
   let leftPanelEl = $state<HTMLElement>();
   let leftResizing = false;
+
+  // The right context panel's tab, lifted here so the mobile tab bar can drive it (on desktop the
+  // panel's own tab bar sets it via the same binding).
+  let artifactTab = $state<'templates' | 'jd' | 'verdict'>('templates');
+
+  // Mobile-only navigation: below lg the three columns collapse to one, so a single flat tab bar
+  // picks which view fills the screen. At lg it's hidden and every column shows at once as before.
+  // mobileView is the sole source of truth for per-region visibility on mobile; picking a tab also
+  // syncs the matching column's own selector (mobile → column) so the wide layout shows the same
+  // content once revealed. The reverse (a desktop tab change updating mobileView) is not wired —
+  // switching a column tab then narrowing across lg resets the mobile view to that tab's default.
+  type MobileView = 'chat' | 'editor' | 'settings' | 'preview' | 'templates' | 'jd' | 'verdict';
+  const mobileTabs: [MobileView, string][] = [
+    ['chat', 'Chat'],
+    ['editor', 'Editor'],
+    ['settings', 'Settings'],
+    ['preview', 'Preview'],
+    ['templates', 'Templates'],
+    ['jd', 'Job'],
+    ['verdict', 'Verdict'],
+  ];
+  let mobileView = $state<MobileView>('chat');
+
+  // Below lg the account icon rail collapses into a drawer opened by the burger in the mobile tab
+  // bar; AccountNavRail owns the drawer and binds this open flag.
+  let navOpen = $state(false);
+  function pickMobile(v: MobileView) {
+    mobileView = v;
+    if (v === 'chat' || v === 'editor' || v === 'settings') leftTab = v;
+    else if (v !== 'preview') artifactTab = v;
+  }
 
   // Centre preview zoom, clamped to 50–150% in 10% steps. Starts at 90% so the full A4 page
   // fits the centre column on load.
@@ -222,7 +254,7 @@
 <!-- Full-width workspace loses the account shell nav; the same left-edge icon rail as
      the Agent page brings the account sections back. It stays put across every state. -->
 <div class="flex h-[calc(100svh-3.5rem)]">
-  <AccountNavRail />
+  <AccountNavRail collapsible bind:open={navOpen} />
   {#if status === 'loading'}
     <div class="flex min-w-0 flex-1 items-center justify-center text-sm text-muted-foreground">
       {resuming ? 'Re-opening your tailoring session…' : 'Preparing your tailoring session…'}
@@ -233,16 +265,46 @@
       <a href={resolve('/match/[slug]', { slug })} class="text-sm text-brand hover:underline">Back to the fit analysis</a>
     </div>
   {:else}
-    <div class="flex min-w-0 flex-1">
-      <!-- LEFT: Editor / Chat tabs (chat stays mounted across tab switches). Full-width below lg
-           (the centre preview + right panel are lg-only), a splitter-sized column at lg+. The
-           width rides a CSS var so the inline style never overrides the mobile w-full. -->
+    <div class="flex min-w-0 flex-1 flex-col lg:flex-row">
+      <!-- MOBILE TAB BAR: below lg the three columns collapse to one full-screen view; this flat,
+           horizontally-scrollable bar switches between all of them. Hidden at lg (columns stack). -->
+      <nav class="flex items-center gap-1 overflow-x-auto border-b border-border bg-background px-2 py-1.5 text-sm lg:hidden">
+        <!-- Burger opens the account nav drawer (the icon rail is hidden below lg). -->
+        <button
+          type="button"
+          onclick={() => (navOpen = true)}
+          aria-label="Open menu"
+          aria-expanded={navOpen}
+          class="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Menu class="size-5" />
+        </button>
+        <span class="mr-0.5 h-5 w-px shrink-0 bg-border" aria-hidden="true"></span>
+        {#each mobileTabs as [id, label] (id)}
+          <button
+            type="button"
+            onclick={() => pickMobile(id)}
+            aria-current={mobileView === id ? 'page' : undefined}
+            class={['shrink-0 rounded px-2 py-1 transition-colors', mobileView === id ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground']}
+          >
+            {label}
+          </button>
+        {/each}
+      </nav>
+
+      <!-- LEFT: Editor / Chat tabs (chat stays mounted across tab switches). On mobile it shows only
+           when its tab is picked; at lg it's a splitter-sized column always shown. The width rides a
+           CSS var so the inline style never overrides the mobile w-full. -->
       <section
         bind:this={leftPanelEl}
-        class="flex w-full shrink-0 flex-col border-r border-border bg-background lg:w-[var(--lw)]"
+        class={[
+          'w-full min-h-0 flex-1 flex-col border-r border-border bg-background lg:w-[var(--lw)] lg:flex-none lg:flex',
+          mobileView === 'chat' || mobileView === 'editor' || mobileView === 'settings' ? 'flex' : 'hidden',
+        ]}
         style="--lw: {leftWidth}px"
       >
-        <div class="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5 text-sm">
+        <!-- Own tab bar (and save status) is desktop-only; the mobile bar drives the tab there. -->
+        <div class="hidden items-center justify-between gap-2 border-b border-border px-2 py-1.5 text-sm lg:flex">
           <div class="flex items-center gap-1">
             <button
               type="button"
@@ -253,13 +315,20 @@
             </button>
             <button
               type="button"
+              onclick={() => (leftTab = 'settings')}
+              class={['rounded px-2 py-1 transition-colors', leftTab === 'settings' ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground']}
+            >
+              Settings
+            </button>
+            <button
+              type="button"
               onclick={() => (leftTab = 'chat')}
               class={['rounded px-2 py-1 transition-colors', leftTab === 'chat' ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground']}
             >
               Chat
             </button>
           </div>
-          {#if leftTab === 'editor'}
+          {#if leftTab === 'editor' || leftTab === 'settings'}
             <span
               class={['pr-1 text-xs', saveState === 'error' ? 'text-destructive' : 'text-muted-foreground']}
               aria-live="polite"
@@ -272,6 +341,15 @@
         <div class="min-h-0 flex-1">
           <div class="h-full overflow-auto p-4" class:hidden={leftTab !== 'editor'}>
             <CvSectionForm bind:doc bind:title />
+          </div>
+          <div class="h-full overflow-auto p-4" class:hidden={leftTab !== 'settings'}>
+            <section class="space-y-3">
+              <div>
+                <h2 class="text-lg font-semibold">Margins <span class="text-sm font-normal text-muted-foreground">(in inches)</span></h2>
+                <p class="mt-0.5 text-sm text-muted-foreground">Page margins applied to the preview and the downloaded PDF.</p>
+              </div>
+              <MarginSettings bind:margins={doc.margins} />
+            </section>
           </div>
           <div class="flex min-h-0 h-full" class:hidden={leftTab !== 'chat'}>
             <AssistantChat
@@ -297,9 +375,11 @@
         onpointerup={stopLeftResize}
       ></div>
 
-      <!-- CENTRE: live HTML preview + zoom + Download PDF. lg-only — below lg the left panel
-           (chat + editor) takes the whole surface. -->
-      <div class="hidden min-w-0 flex-1 flex-col bg-muted/30 lg:flex">
+      <!-- CENTRE: live HTML preview + zoom + Download PDF. On mobile it shows only when the Preview
+           tab is picked; at lg it's always shown as the middle column. -->
+      <div
+        class={['min-w-0 min-h-0 flex-1 flex-col bg-muted/30 lg:flex', mobileView === 'preview' ? 'flex' : 'hidden']}
+      >
         <div class="flex items-center justify-between gap-2 border-b border-border bg-background px-3 py-1.5 text-sm">
           <div class="flex items-center gap-1">
             <button type="button" onclick={zoomOut} aria-label="Zoom out" class="rounded p-1 text-muted-foreground transition-colors hover:text-foreground">
@@ -326,8 +406,16 @@
         </div>
       </div>
 
-      <!-- RIGHT: Templates / Job description / Verdict (renders its own splitter). -->
-      <ArtifactPanel {cvId} job={job!} {analysis} {onTemplateSelected} />
+      <!-- RIGHT: Templates / Job description / Verdict (renders its own splitter). Shown on mobile
+           only when one of its tabs is picked; always shown at lg. -->
+      <ArtifactPanel
+        {cvId}
+        job={job!}
+        {analysis}
+        {onTemplateSelected}
+        bind:tab={artifactTab}
+        mobileVisible={mobileView === 'templates' || mobileView === 'jd' || mobileView === 'verdict'}
+      />
     </div>
   {/if}
 </div>
