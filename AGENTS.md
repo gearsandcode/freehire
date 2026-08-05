@@ -58,6 +58,7 @@ Each is self-contained and can be read independently.
 
 | Area | Reference |
 |---|---|
+| **Architecture overview** (mermaid diagrams, feature flows) | [docs/architecture.md](docs/architecture.md) |
 | **HTTP handlers** (response shapes, error rendering, routes) | [internal/handler/AGENTS.md](internal/handler/AGENTS.md) |
 | **SQL layer** (sqlc, queries, migrations) | [internal/db/AGENTS.md](internal/db/AGENTS.md) |
 | **Search** (Meili index topology, rebuild swap, reindex hazards) | [internal/search/AGENTS.md](internal/search/AGENTS.md) |

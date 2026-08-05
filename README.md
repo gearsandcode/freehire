@@ -146,6 +146,8 @@ https://freehire.me/api/v1/jobs` needs no credential. All responses use
 
 **Full reference — every endpoint, its parameters, auth mode and the whole
 search-filter vocabulary: [freehire.me/docs/api](https://freehire.me/docs/api).**
+For a tour of how the system fits together with diagrams, see
+[docs/architecture.md](docs/architecture.md).
 
 ## Sources
 
